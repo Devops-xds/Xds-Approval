@@ -23,3 +23,28 @@ export const formatCurrencyAmount = (amount: number, currency?: string | null): 
     return `${normalizedCurrency} ${formattedAmount}`;
   }
 };
+
+export const formatCurrencyTotals = (
+  items: Array<{ amount: number; currency?: string | null }>,
+  fallbackCurrency?: string | null,
+): string => {
+  const totalsByCurrency = new Map<string, number>();
+
+  items.forEach(({ amount, currency }) => {
+    if (!Number.isFinite(amount)) {
+      return;
+    }
+
+    const normalizedCurrency = normalizeCurrencyCode(currency ?? fallbackCurrency);
+    totalsByCurrency.set(normalizedCurrency, (totalsByCurrency.get(normalizedCurrency) ?? 0) + amount);
+  });
+
+  if (totalsByCurrency.size === 0) {
+    return formatCurrencyAmount(0, fallbackCurrency);
+  }
+
+  return Array.from(totalsByCurrency.entries())
+    .sort(([left], [right]) => left.localeCompare(right))
+    .map(([currency, total]) => formatCurrencyAmount(total, currency))
+    .join(' • ');
+};

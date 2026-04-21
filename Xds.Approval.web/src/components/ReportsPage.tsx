@@ -15,7 +15,7 @@ import {
 } from 'lucide-react';
 import { format, subMonths, startOfMonth, endOfMonth, differenceInDays } from 'date-fns';
 import { enGB } from 'date-fns/locale';
-import { formatCurrencyAmount } from '@/lib/currency';
+import { formatCurrencyAmount, formatCurrencyTotals } from '@/lib/currency';
 
 interface ReportsPageProps {
   requests: PaymentRequest[];
@@ -65,9 +65,11 @@ const ReportsPage: React.FC<ReportsPageProps> = ({ requests, isLoading, onRefres
   const kpis = useMemo(() => {
     const total = filteredRequests.length;
     const totalAmount = filteredRequests.reduce((sum, r) => sum + r.amount, 0);
+    const totalAmountLabel = formatCurrencyTotals(filteredRequests.map((request) => ({ amount: request.amount, currency: request.currency })));
 
     const finalSigned = filteredRequests.filter((r) => r.status === 'Approved');
     const finalSignedAmount = finalSigned.reduce((sum, r) => sum + r.amount, 0);
+    const finalSignedAmountLabel = formatCurrencyTotals(finalSigned.map((request) => ({ amount: request.amount, currency: request.currency })));
 
     const avgDaysBetween = (items: PaymentRequest[], startSelector: (request: PaymentRequest) => string | undefined, endSelector: (request: PaymentRequest) => string | undefined) => {
       const durations = items
@@ -90,8 +92,8 @@ const ReportsPage: React.FC<ReportsPageProps> = ({ requests, isLoading, onRefres
     if (role === 'Finance') {
       const awaitingPreparation = filteredRequests.filter((r) => r.status === 'CEOApproved');
       const preparedPipeline = filteredRequests.filter((r) => r.status === 'FinancePrepared' || r.status === 'FinanceAuthorized' || r.status === 'Approved');
-      const awaitingPreparationAmount = awaitingPreparation.reduce((sum, r) => sum + r.amount, 0);
-      const preparedPipelineAmount = preparedPipeline.reduce((sum, r) => sum + r.amount, 0);
+      const awaitingPreparationAmountLabel = formatCurrencyTotals(awaitingPreparation.map((request) => ({ amount: request.amount, currency: request.currency })));
+      const preparedPipelineAmountLabel = formatCurrencyTotals(preparedPipeline.map((request) => ({ amount: request.amount, currency: request.currency })));
       const prepLeadTime = avgDaysBetween(preparedPipeline, (r) => r.createdAt, (r) => r.preparedAt);
       const endToEndLeadTime = avgDaysBetween(finalSigned, (r) => r.createdAt, (r) => r.approvedAt ?? r.updatedAt);
       const throughputRate = total > 0 ? (preparedPipeline.length / total) * 100 : 0;
@@ -100,7 +102,7 @@ const ReportsPage: React.FC<ReportsPageProps> = ({ requests, isLoading, onRefres
         {
           label: 'Awaiting preparation',
           value: awaitingPreparation.length,
-          subtitle: `${formatCurrencyAmount(awaitingPreparationAmount, 'GHS')} waiting for Finance`,
+          subtitle: `${awaitingPreparationAmountLabel} waiting for Finance`,
           icon: 'file',
           gradient: 'from-amber-500 to-orange-500',
           text: 'text-amber-700',
@@ -108,7 +110,7 @@ const ReportsPage: React.FC<ReportsPageProps> = ({ requests, isLoading, onRefres
         {
           label: 'Prepared pipeline',
           value: preparedPipeline.length,
-          subtitle: `${formatCurrencyAmount(preparedPipelineAmount, 'GHS')} already handled by Finance`,
+          subtitle: `${preparedPipelineAmountLabel} already handled by Finance`,
           icon: 'trend',
           gradient: 'from-emerald-500 to-green-500',
           text: 'text-emerald-700',
@@ -132,7 +134,7 @@ const ReportsPage: React.FC<ReportsPageProps> = ({ requests, isLoading, onRefres
         {
           label: 'Ready for payment',
           value: finalSigned.length,
-          subtitle: `${formatCurrencyAmount(finalSignedAmount, 'GHS')} finally signed by CEO`,
+          subtitle: `${finalSignedAmountLabel} finally signed by CEO`,
           icon: 'done',
           gradient: 'from-emerald-500 to-green-500',
           text: 'text-emerald-700',
@@ -153,8 +155,8 @@ const ReportsPage: React.FC<ReportsPageProps> = ({ requests, isLoading, onRefres
     if (role === 'HeadOfFinance') {
       const awaitingReview = filteredRequests.filter((r) => r.status === 'FinancePrepared');
       const reviewed = filteredRequests.filter((r) => r.status === 'FinanceAuthorized' || r.status === 'Approved');
-      const awaitingReviewAmount = awaitingReview.reduce((sum, r) => sum + r.amount, 0);
-      const reviewedAmount = reviewed.reduce((sum, r) => sum + r.amount, 0);
+      const awaitingReviewAmountLabel = formatCurrencyTotals(awaitingReview.map((request) => ({ amount: request.amount, currency: request.currency })));
+      const reviewedAmountLabel = formatCurrencyTotals(reviewed.map((request) => ({ amount: request.amount, currency: request.currency })));
       const reviewLeadTime = avgDaysBetween(reviewed, (r) => r.preparedAt, (r) => r.authorizedAt);
       const signoffLeadTime = avgDaysBetween(finalSigned.filter((r) => r.authorizedAt), (r) => r.authorizedAt, (r) => r.approvedAt ?? r.updatedAt);
       const reviewRate = total > 0 ? (reviewed.length / total) * 100 : 0;
@@ -163,7 +165,7 @@ const ReportsPage: React.FC<ReportsPageProps> = ({ requests, isLoading, onRefres
         {
           label: 'Awaiting review',
           value: awaitingReview.length,
-          subtitle: `${formatCurrencyAmount(awaitingReviewAmount, 'GHS')} waiting for Finance Manager review`,
+          subtitle: `${awaitingReviewAmountLabel} waiting for Finance Manager review`,
           icon: 'file',
           gradient: 'from-amber-500 to-orange-500',
           text: 'text-amber-700',
@@ -171,7 +173,7 @@ const ReportsPage: React.FC<ReportsPageProps> = ({ requests, isLoading, onRefres
         {
           label: 'Reviewed requests',
           value: reviewed.length,
-          subtitle: `${formatCurrencyAmount(reviewedAmount, 'GHS')} reviewed by Finance Manager`,
+          subtitle: `${reviewedAmountLabel} reviewed by Finance Manager`,
           icon: 'done',
           gradient: 'from-emerald-500 to-green-500',
           text: 'text-emerald-700',
@@ -195,7 +197,7 @@ const ReportsPage: React.FC<ReportsPageProps> = ({ requests, isLoading, onRefres
         {
           label: 'Signed for payment',
           value: finalSigned.length,
-          subtitle: `${formatCurrencyAmount(finalSignedAmount, 'GHS')} returned after CEO signature`,
+          subtitle: `${finalSignedAmountLabel} returned after CEO signature`,
           icon: 'money',
           gradient: 'from-emerald-500 to-green-500',
           text: 'text-emerald-700',
@@ -221,7 +223,7 @@ const ReportsPage: React.FC<ReportsPageProps> = ({ requests, isLoading, onRefres
       r.status === 'FinancePrepared' ||
       r.status === 'FinanceAuthorized'
     );
-    const inProgressAmount = inProgress.reduce((sum, r) => sum + r.amount, 0);
+    const inProgressAmountLabel = formatCurrencyTotals(inProgress.map((request) => ({ amount: request.amount, currency: request.currency })));
     const decided = filteredRequests.filter((r) => r.status === 'Approved' || r.status === 'Rejected');
     const approvalRate = decided.length > 0 ? (completed.length / decided.length) * 100 : 0;
     const avgProcessingDays = avgDaysBetween(completed, (r) => r.createdAt, (r) => r.approvedAt ?? r.updatedAt);
@@ -237,7 +239,7 @@ const ReportsPage: React.FC<ReportsPageProps> = ({ requests, isLoading, onRefres
       },
       {
         label: 'Total amount',
-        value: formatCurrencyAmount(totalAmount, 'GHS'),
+        value: totalAmountLabel,
         subtitle: 'all requests',
         icon: 'money',
         gradient: 'from-emerald-600 to-emerald-700',
@@ -261,7 +263,7 @@ const ReportsPage: React.FC<ReportsPageProps> = ({ requests, isLoading, onRefres
       },
       {
         label: 'Processed amount',
-        value: formatCurrencyAmount(completedAmount, 'GHS'),
+        value: finalSignedAmountLabel,
         subtitle: 'completed payments',
         icon: 'done',
         gradient: 'from-emerald-500 to-green-600',
@@ -269,7 +271,7 @@ const ReportsPage: React.FC<ReportsPageProps> = ({ requests, isLoading, onRefres
       },
       {
         label: 'Pending amount',
-        value: formatCurrencyAmount(inProgressAmount, 'GHS'),
+        value: inProgressAmountLabel,
         subtitle: 'currently in progress',
         icon: 'trend',
         gradient: 'from-emerald-500 to-green-600',

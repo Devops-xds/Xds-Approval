@@ -2,7 +2,7 @@ import React, { useMemo } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useAppContext } from '@/contexts/AppContext';
 import { PaymentRequest } from '@/lib/api';
-import { formatCurrencyAmount, normalizeCurrencyCode } from '@/lib/currency';
+import { formatCurrencyAmount, formatCurrencyTotals } from '@/lib/currency';
 import { getPaymentTypeLabel } from '@/lib/payment';
 import StatusBadge from './StatusBadge';
 import {
@@ -57,14 +57,14 @@ const Dashboard: React.FC<DashboardProps> = ({ requests, isLoading, onViewReques
       .slice(0, 5);
   }, [requests]);
 
-  const summaryCurrency = useMemo(() => {
-    const currencies = Array.from(new Set(requests.map((request) => normalizeCurrencyCode(request.currency))));
-    return currencies.length === 1 ? currencies[0] : null;
-  }, [requests]);
-
   const formatCurrency = (amount: number, currency = 'GHS') => {
     return formatCurrencyAmount(amount, currency);
   };
+
+  const totalAmountLabel = useMemo(
+    () => formatCurrencyTotals(requests.map((request) => ({ amount: request.amount, currency: request.currency }))),
+    [requests],
+  );
 
   const formatDate = (dateStr: string) => {
     try {
@@ -139,7 +139,7 @@ const Dashboard: React.FC<DashboardProps> = ({ requests, isLoading, onViewReques
           },
           {
             label: 'Total amount',
-            value: summaryCurrency ? formatCurrency(stats.totalAmount, summaryCurrency) : 'Multiple currencies',
+            value: totalAmountLabel,
             icon: <TrendingUp className="w-5 h-5" />,
             color: 'from-emerald-600 to-teal-600',
             bgLight: 'bg-emerald-50',
@@ -190,7 +190,7 @@ const Dashboard: React.FC<DashboardProps> = ({ requests, isLoading, onViewReques
           },
           {
             label: 'Total amount',
-            value: summaryCurrency ? formatCurrency(stats.totalAmount, summaryCurrency) : 'Multiple currencies',
+            value: totalAmountLabel,
             icon: <TrendingUp className="w-5 h-5" />,
             color: 'from-emerald-600 to-teal-600',
             bgLight: 'bg-emerald-50',
@@ -202,7 +202,7 @@ const Dashboard: React.FC<DashboardProps> = ({ requests, isLoading, onViewReques
       ? [
           {
             label: 'Average amount',
-            value: summaryCurrency ? formatCurrency(stats.averageAmount, summaryCurrency) : 'Multiple currencies',
+            value: formatCurrency(stats.averageAmount),
             icon: <TrendingUp className="w-5 h-5" />,
             color: 'from-emerald-600 to-green-600',
             bgLight: 'bg-emerald-50',
