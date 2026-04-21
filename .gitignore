@@ -21,3 +21,4 @@ Xds.Approval.Api/obj/
 Xds.Approval.web/node_modules/
 Xds.Approval.web/dist/
 .tmp/
+.env

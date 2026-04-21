@@ -1,6 +1,8 @@
 import { PaymentType, PaymentTypeValue } from '@/lib/payment';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5256';
+const API_BASE_URL =
+  import.meta.env.VITE_API_BASE_URL ||
+  (import.meta.env.DEV ? 'http://localhost:5256' : '/api');
 //const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://192.168.1.2:5256';
 
 interface RequestOptions {
@@ -66,14 +68,14 @@ class ApiClient {
 
   // Auth
   async login(credentials: { username: string; password: string }) {
-    return this.request<AuthResponse>('/api/Auth/login', {
+    return this.request<AuthResponse>('/Auth/login', {
       method: 'POST',
       body: credentials,
     });
   }
 
   async register(data: RegisterRequest) {
-    return this.request<AuthResponse>('/api/Auth/register', {
+    return this.request<AuthResponse>('/Auth/register', {
       method: 'POST',
       body: data,
     });
@@ -81,15 +83,15 @@ class ApiClient {
 
   // Payment Requests
   async getPaymentRequests() {
-    return this.request<PaymentRequest[]>('/api/PaymentRequests');
+    return this.request<PaymentRequest[]>('/PaymentRequests');
   }
 
   async getPaymentRequest(id: string) {
-    return this.request<PaymentRequest>(`/api/PaymentRequests/${id}`);
+    return this.request<PaymentRequest>(`/PaymentRequests/${id}`);
   }
 
   async createPaymentRequest(data: CreatePaymentRequest) {
-    return this.request<PaymentRequest>('/api/PaymentRequests', {
+    return this.request<PaymentRequest>('/PaymentRequests', {
       method: 'POST',
       body: data,
     });
@@ -97,7 +99,7 @@ class ApiClient {
 
   // CEO Actions
   async approveRequest(data: { paymentRequestId: string; status: 'Approved' | 'Rejected'; comment?: string }) {
-    return this.request<PaymentRequest>('/api/PaymentRequests/approve', {
+    return this.request<PaymentRequest>('/PaymentRequests/approve', {
       method: 'POST',
       body: data,
     });
@@ -105,7 +107,7 @@ class ApiClient {
 
   // Finance Actions
   async processPayment(id: string, data: { companyName?: string; recipientName?: string; recipientAddress?: string; recipientTelephone?: string } = {}) {
-    return this.request<PaymentRequest>(`/api/PaymentRequests/${id}/process`, {
+    return this.request<PaymentRequest>(`/PaymentRequests/${id}/process`, {
       method: 'POST',
       body: data,
     });
@@ -115,7 +117,7 @@ class ApiClient {
   async uploadAttachment(id: string, file: File) {
     const formData = new FormData();
     formData.append('file', file);
-    return this.request<any>(`/api/PaymentRequests/${id}/attachments`, {
+    return this.request<any>(`/PaymentRequests/${id}/attachments`, {
       method: 'POST',
       body: formData,
       isFormData: true,
@@ -124,18 +126,18 @@ class ApiClient {
 
   // Documents
   async downloadDocument(id: string): Promise<Blob> {
-    return this.request<Blob>(`/api/PaymentRequests/${id}/document`);
+    return this.request<Blob>(`/PaymentRequests/${id}/document`);
   }
 
   async downloadArchive(id: string): Promise<Blob> {
-    return this.request<Blob>(`/api/PaymentRequests/${id}/document/archive`);
+    return this.request<Blob>(`/PaymentRequests/${id}/document/archive`);
   }
 
   async verifyDocument(params: { documentNumber?: string; verificationCode?: string }) {
     const searchParams = new URLSearchParams();
     if (params.documentNumber) searchParams.set('documentNumber', params.documentNumber);
     if (params.verificationCode) searchParams.set('verificationCode', params.verificationCode);
-    return this.request<DocumentVerification>(`/api/PaymentRequests/documents/verify?${searchParams.toString()}`);
+    return this.request<DocumentVerification>(`/PaymentRequests/documents/verify?${searchParams.toString()}`);
   }
 
   // Audit Logs
@@ -147,11 +149,11 @@ class ApiClient {
     if (filters?.fromUtc) searchParams.set('FromUtc', filters.fromUtc);
     if (filters?.toUtc) searchParams.set('ToUtc', filters.toUtc);
     const query = searchParams.toString();
-    return this.request<AuditLog[]>(`/api/PaymentRequests/audit-logs${query ? `?${query}` : ''}`);
+    return this.request<AuditLog[]>(`/PaymentRequests/audit-logs${query ? `?${query}` : ''}`);
   }
 
   async getRequestAuditLogs(id: string) {
-    return this.request<AuditLog[]>(`/api/PaymentRequests/${id}/audit-logs`);
+    return this.request<AuditLog[]>(`/PaymentRequests/${id}/audit-logs`);
   }
 }
 

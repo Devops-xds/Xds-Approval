@@ -1,0 +1,40 @@
+Flowchart
+	A user creates a payment request.
+The request is sent to the CEO.
+The CEO approves or rejects the request.
+If rejected → Only the user receives a rejection message with the CEO’s comment.
+If approved → The request is sent to Finance.
+Finance employee creates the PV with the attachement and the Head of Finance also signe Authorize and send to the CEO for approuval.
+CEO signe then the PV and attachement goes back to the Finance for final payment.
+About the signature only CEO and Head of finance must be in the PV.
+
+
+
+Xds.Approval.Api/
+│
+├── Controllers/
+│   └── PaymentRequestsController.cs
+│
+├── Services/
+│   ├── Interfaces/
+│   │   └── IPaymentService.cs
+│   └── Implementations/
+│       └── PaymentService.cs
+│
+├── DTOs/
+│   └── Payment/
+│       ├── CreatePaymentRequestDto.cs
+│       ├── ApprovalDto.cs
+│
+├── Models/
+│   ├── PaymentRequest.cs
+│   ├── Attachment.cs
+│   ├── Approval.cs
+│   ├── FinanceProcessing.cs
+│   ├── AuditLog.cs
+│
+├── Data/
+│   └── AppDbContext.cs
+│
+├── Program.cs
+└── appsettings.json

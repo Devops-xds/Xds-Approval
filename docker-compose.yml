@@ -1,0 +1,66 @@
+services:
+  db:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    container_name: xds-approval-db
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_PID: "${MSSQL_PID:-Developer}"
+      MSSQL_SA_PASSWORD: "${MSSQL_SA_PASSWORD}"
+    ports:
+      - "${DB_BIND_ADDRESS:-127.0.0.1}:${DB_PORT:-1433}:1433"
+    volumes:
+      - sql_data:/var/opt/mssql
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "/opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P $$MSSQL_SA_PASSWORD -C -Q 'SELECT 1' || exit 1"
+        ]
+      interval: 15s
+      timeout: 10s
+      retries: 20
+      start_period: 45s
+    restart: unless-stopped
+
+  api:
+    build:
+      context: .
+      dockerfile: Xds.Approval.Api/Dockerfile
+    container_name: xds-approval-api
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      ASPNETCORE_ENVIRONMENT: "Production"
+      ASPNETCORE_URLS: "http://+:8080"
+      ConnectionStrings__DefaultConnection: "Server=db;Database=${SQL_DATABASE:-XdsApprovalDb};User Id=sa;Password=${MSSQL_SA_PASSWORD};Encrypt=false;TrustServerCertificate=true"
+      Jwt__Key: "${JWT_KEY}"
+      Jwt__Issuer: "${JWT_ISSUER:-Xds.Approval.Api}"
+      Jwt__Audience: "${JWT_AUDIENCE:-Xds.Approval.Client}"
+      Cors__AllowedOrigins__0: "${APP_BASE_URL:-http://localhost}"
+      Cors__AllowedOrigins__1: "${APP_BASE_URL_ALT:-http://127.0.0.1}"
+      PdfTemplate__LogoPath: "${PDF_LOGO_PATH:-logo/assets/xdslogo_green.png}"
+    ports:
+      - "${API_BIND_ADDRESS:-127.0.0.1}:${API_PORT:-5256}:8080"
+    volumes:
+      - api_uploads:/app/wwwroot/uploads
+      - api_documents:/app/wwwroot/documents
+    restart: unless-stopped
+
+  web:
+    build:
+      context: .
+      dockerfile: Xds.Approval.web/Dockerfile
+      args:
+        VITE_API_BASE_URL: "${VITE_API_BASE_URL:-/api}"
+    container_name: xds-approval-web
+    depends_on:
+      - api
+    ports:
+      - "${WEB_BIND_ADDRESS:-0.0.0.0}:${WEB_PORT:-80}:80"
+    restart: unless-stopped
+
+volumes:
+  sql_data:
+  api_uploads:
+  api_documents:
