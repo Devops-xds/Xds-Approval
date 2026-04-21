@@ -204,7 +204,7 @@ const AppLayout: React.FC = () => {
   };
 
   return (
-    <div className={`min-h-screen ${shellTheme.page} dark:bg-[radial-gradient(circle_at_top_left,_rgba(52,211,153,0.14),_transparent_30%),linear-gradient(180deg,_#0f1714_0%,_#16211d_55%,_#1a2621_100%)]`}>
+    <div className={`min-h-screen ${shellTheme.page} dark:bg-[radial-gradient(circle_at_top_left,_rgba(52,211,153,0.10),_transparent_32%),linear-gradient(180deg,_#282A2D_0%,_#2d3033_55%,_#31353a_100%)]`}>
       <Sidebar
         currentView={currentView}
         onNavigate={handleNavigate}
