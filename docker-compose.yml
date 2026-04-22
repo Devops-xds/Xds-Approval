@@ -38,6 +38,8 @@ services:
       SQL_DATABASE: "${SQL_DATABASE:-XdsApprovalDb}"
       SQL_USER: "sa"
       MSSQL_SA_PASSWORD: "${MSSQL_SA_PASSWORD:-ChangeThisToAStrongPassword123!}"
+      Database__MigrateMaxAttempts: "${DB_MIGRATE_MAX_ATTEMPTS:-60}"
+      Database__MigrateRetryDelaySeconds: "${DB_MIGRATE_RETRY_DELAY_SECONDS:-5}"
       Jwt__Key: "${JWT_KEY:-ChangeThisToALongRandomJwtKeyAtLeast32Chars}"
       Jwt__Issuer: "${JWT_ISSUER:-Xds.Approval.Api}"
       Jwt__Audience: "${JWT_AUDIENCE:-Xds.Approval.Client}"

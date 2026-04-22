@@ -134,17 +134,7 @@ var startupLogger = app.Services.GetRequiredService<ILoggerFactory>().CreateLogg
 
 EnsureStorageFolders(app.Configuration, app.Environment, startupLogger);
 
-// Migration auto
-try
-{
-    using var scope = app.Services.CreateScope();
-    var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-    dbContext.Database.Migrate();
-}
-catch (Exception exception) when (exception is SqlException or InvalidOperationException)
-{
-    startupLogger.LogError(exception, "Database migration failed. The API will keep running and database endpoints will return a controlled error until SQL Server is reachable.");
-}
+await ApplyDatabaseMigrationsAsync(app.Services, startupLogger, app.Configuration);
 
 // Pipeline
 if (app.Environment.IsDevelopment())
@@ -236,6 +226,59 @@ static string BuildDefaultConnectionString(IConfiguration configuration)
     var sqlUser = configuration["SQL_USER"] ?? "sa";
 
     return $"Server={sqlServer};Database={sqlDatabase};User Id={sqlUser};Password={sqlPassword};Encrypt=false;TrustServerCertificate=true";
+}
+
+static async Task ApplyDatabaseMigrationsAsync(IServiceProvider services, ILogger logger, IConfiguration configuration)
+{
+    var maxAttempts = configuration.GetValue<int?>("Database:MigrateMaxAttempts") ?? 30;
+    var retryDelaySeconds = configuration.GetValue<int?>("Database:MigrateRetryDelaySeconds") ?? 5;
+    var retryDelay = TimeSpan.FromSeconds(Math.Max(1, retryDelaySeconds));
+
+    for (var attempt = 1; attempt <= maxAttempts; attempt++)
+    {
+        try
+        {
+            using var scope = services.CreateScope();
+            var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            var pendingMigrations = (await dbContext.Database.GetPendingMigrationsAsync()).ToList();
+
+            if (pendingMigrations.Count > 0)
+            {
+                logger.LogInformation(
+                    "Applying {MigrationCount} pending database migration(s): {Migrations}",
+                    pendingMigrations.Count,
+                    string.Join(", ", pendingMigrations));
+            }
+            else
+            {
+                logger.LogInformation("No pending database migrations.");
+            }
+
+            await dbContext.Database.MigrateAsync();
+            logger.LogInformation("Database migration check completed successfully.");
+            return;
+        }
+        catch (Exception exception) when (exception is SqlException or InvalidOperationException)
+        {
+            if (attempt == maxAttempts)
+            {
+                logger.LogCritical(
+                    exception,
+                    "Database migration failed after {AttemptCount} attempt(s). The API will stop so Docker can restart it after SQL Server is ready.",
+                    maxAttempts);
+                throw;
+            }
+
+            logger.LogWarning(
+                exception,
+                "Database migration attempt {Attempt}/{MaxAttempts} failed. Retrying in {RetryDelaySeconds} second(s).",
+                attempt,
+                maxAttempts,
+                retryDelay.TotalSeconds);
+
+            await Task.Delay(retryDelay);
+        }
+    }
 }
 
 
