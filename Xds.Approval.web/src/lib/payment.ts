@@ -1,17 +1,17 @@
-export type PaymentType = 'Once-off' | 'Recurring';
+export type PaymentType = 'One-off' | 'Recurring';
 export type PaymentTypeValue = PaymentType | 'One month';
 
 export const getPaymentTypeLabel = (paymentType?: string | null) => {
   if (paymentType === 'One month') {
-    return 'Once-off';
+    return 'One-off';
   }
 
-  if (paymentType === 'One off') {
-    return 'Once-off';
+  if (paymentType === 'One off' || paymentType === 'Once-off') {
+    return 'One-off';
   }
 
   if (paymentType === 'one-off' || paymentType === 'one off' || paymentType === 'once off' || paymentType === 'once-off') {
-    return 'Once-off';
+    return 'One-off';
   }
 
   return paymentType || 'N/A';

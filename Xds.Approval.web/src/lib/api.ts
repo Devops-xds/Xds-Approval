@@ -47,7 +47,7 @@ class ApiClient {
       const contentType = response.headers.get('content-type') || '';
       if (contentType.includes('application/json')) {
         const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.message || errorData.title || `Error ${response.status}`);
+        throw new Error(errorData.message || errorData.detail || errorData.title || `Error ${response.status}`);
       }
 
       const errorText = await response.text().catch(() => '');

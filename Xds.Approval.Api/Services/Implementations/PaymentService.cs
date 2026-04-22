@@ -414,174 +414,183 @@ public class PaymentService : IPaymentService
         var ceoSignature = LoadSignatureImage("CEO");
         var attachmentNames = request.Attachments?.OrderBy(attachment => attachment.UploadedAt).Select(attachment => attachment.FileName).ToList() ?? [];
 
-        var pdfBytes = Document.Create(container =>
+        byte[] pdfBytes;
+        try
         {
-            container.Page(page =>
+            pdfBytes = Document.Create(container =>
             {
-                page.Size(PageSizes.A4);
-                page.Margin(24);
-                page.DefaultTextStyle(style => style.FontSize(10).FontColor(Colors.Black));
-
-                page.Header().Column(column =>
+                container.Page(page =>
                 {
-                    column.Item().Row(row =>
+                    page.Size(PageSizes.A4);
+                    page.Margin(24);
+                    page.DefaultTextStyle(style => style.FontSize(10).FontColor(Colors.Black));
+
+                    page.Header().Column(column =>
                     {
-                        row.ConstantItem(180).Height(60).Element(element =>
+                        column.Item().Row(row =>
                         {
-                            if (logoBytes is not null)
+                            row.ConstantItem(180).Height(60).Element(element =>
                             {
-                                element.Image(logoBytes).FitArea();
-                            }
+                                if (logoBytes is not null)
+                                {
+                                    element.Image(logoBytes).FitArea();
+                                }
+                            });
                         });
+                        column.Item().LineHorizontal(8).LineColor(Colors.Green.Darken2);
                     });
-                    column.Item().LineHorizontal(8).LineColor(Colors.Green.Darken2);
-                });
 
-                page.Footer().PaddingTop(12).Element(container =>
-                {
-                    container
-                        .BorderTop(1)
-                        .BorderColor(Colors.Grey.Lighten2)
-                        .Background(Colors.White)
-                        .PaddingVertical(14)
-                        .PaddingHorizontal(18)
-                        .Column(column =>
-                        {
-                            column.Spacing(8);
-
-                            column.Item().Row(row =>
+                    page.Footer().PaddingTop(12).Element(container =>
+                    {
+                        container
+                            .BorderTop(1)
+                            .BorderColor(Colors.Grey.Lighten2)
+                            .Background(Colors.White)
+                            .PaddingVertical(14)
+                            .PaddingHorizontal(18)
+                            .Column(column =>
                             {
-                                row.RelativeItem().Text($"Tel  {companyPhone}").FontColor(Colors.Grey.Darken3).FontSize(10);
-                                row.RelativeItem().Text($"Email  {companyEmail}").FontColor(Colors.Grey.Darken3).FontSize(10);
+                                column.Spacing(8);
+
+                                column.Item().Row(row =>
+                                {
+                                    row.RelativeItem().Text($"Tel  {companyPhone}").FontColor(Colors.Grey.Darken3).FontSize(10);
+                                    row.RelativeItem().Text($"Email  {companyEmail}").FontColor(Colors.Grey.Darken3).FontSize(10);
+                                });
+
+                                column.Item().Row(row =>
+                                {
+                                    row.RelativeItem().Text($"Web  {companyWebsite}").FontColor(Colors.Grey.Darken3).FontSize(10);
+                                    row.RelativeItem().Text($"Address  {companyAddress}").FontColor(Colors.Grey.Darken3).FontSize(10);
+                                });
+
+                                column.Item().Text(companyLicense).FontColor(Colors.Grey.Darken2).FontSize(10);
+                            });
+                    });
+
+                    page.Content().Column(column =>
+                    {
+                        column.Spacing(10);
+                        column.Item().AlignCenter().Text("TRANSFER PAYMENT VOUCHER").Bold().FontSize(16);
+                        column.Item().Row(row =>
+                        {
+                            row.RelativeItem().Text($"NAME: {companyName}".ToUpperInvariant()).Bold();
+                            row.ConstantItem(120).AlignRight().Text(documentNumber).Bold();
+                        });
+                        column.Item().AlignRight().Text("TRANSFER").Bold();
+
+                        column.Item().Table(table =>
+                        {
+                            table.ColumnsDefinition(columns =>
+                            {
+                                columns.ConstantColumn(95);
+                                columns.RelativeColumn(4);
+                                columns.ConstantColumn(90);
+                                columns.ConstantColumn(110);
                             });
 
-                            column.Item().Row(row =>
+                            table.Header(header =>
                             {
-                                row.RelativeItem().Text($"Web  {companyWebsite}").FontColor(Colors.Grey.Darken3).FontSize(10);
-                                row.RelativeItem().Text($"Address  {companyAddress}").FontColor(Colors.Grey.Darken3).FontSize(10);
+                                header.Cell().Element(CellStyle).Text("DATE").Bold().AlignCenter();
+                                header.Cell().Element(CellStyle).Text("DESCRIPTION").Bold().AlignCenter();
+                                header.Cell().Element(CellStyle).Text("TAX(WHT)").Bold().AlignCenter();
+                                header.Cell().Element(CellStyle).Text("AMOUNT").Bold().AlignCenter();
                             });
 
-                            column.Item().Text(companyLicense).FontColor(Colors.Grey.Darken2).FontSize(10);
-                        });
-                });
-
-                page.Content().Column(column =>
-                {
-                    column.Spacing(10);
-                    column.Item().AlignCenter().Text("TRANSFER PAYMENT VOUCHER").Bold().FontSize(16);
-                    column.Item().Row(row =>
-                    {
-                        row.RelativeItem().Text($"NAME: {companyName}".ToUpperInvariant()).Bold();
-                        row.ConstantItem(120).AlignRight().Text(documentNumber).Bold();
-                    });
-                    column.Item().AlignRight().Text("TRANSFER").Bold();
-
-                    column.Item().Table(table =>
-                    {
-                        table.ColumnsDefinition(columns =>
-                        {
-                            columns.ConstantColumn(95);
-                            columns.RelativeColumn(4);
-                            columns.ConstantColumn(90);
-                            columns.ConstantColumn(110);
-                        });
-
-                        table.Header(header =>
-                        {
-                            header.Cell().Element(CellStyle).Text("DATE").Bold().AlignCenter();
-                            header.Cell().Element(CellStyle).Text("DESCRIPTION").Bold().AlignCenter();
-                            header.Cell().Element(CellStyle).Text("TAX(WHT)").Bold().AlignCenter();
-                            header.Cell().Element(CellStyle).Text("AMOUNT").Bold().AlignCenter();
-                        });
-
-                        table.Cell().Element(DataCellStyle).Text(request.CreatedAt.ToString("dd/MM/yyyy"));
-                        table.Cell().Element(DataCellStyle).Column(details =>
-                        {
-                            details.Spacing(2);
-                            details.Item().Text(request.Description);
-                        });
-                        table.Cell().Element(DataCellStyle).AlignCenter().Text("-");
-                        table.Cell().Element(DataCellStyle).AlignRight().Text($"{request.Amount:N2} {request.Currency}").Bold();
-
-                        table.Cell().ColumnSpan(3).Element(DataCellStyle).Text($"AMOUNT IN WORD: {ToAmountInWords(request.Amount, string.IsNullOrWhiteSpace(request.Currency) ? "GHS" : request.Currency)}".ToUpperInvariant()).Bold();
-                        table.Cell().Element(DataCellStyle).AlignRight().Text($"{request.Amount:N2}").Bold();
-                    });
-
-                    column.Item().PaddingTop(6).Table(infoTable =>
-                    {
-                        infoTable.ColumnsDefinition(columns =>
-                        {
-                            columns.RelativeColumn();
-                            columns.RelativeColumn();
-                            columns.RelativeColumn();
-                        });
-
-                        infoTable.Cell().Element(DataCellStyle).Column(details =>
-                        {
-                            details.Spacing(3);
-                            details.Item().Text("PREPARED BY").Bold();
-                            details.Item().Text(preparedBy);
-                        });
-
-                        infoTable.Cell().Element(DataCellStyle).Column(details =>
-                        {
-                            details.Spacing(3);
-                            details.Item().Text("REVIEWED BY").Bold();
-                            details.Item().Text(reviewedBy);
-                        });
-
-                        infoTable.Cell().Element(DataCellStyle).Column(details =>
-                        {
-                            details.Spacing(3);
-                            details.Item().Text("APPROVED BY").Bold();
-                            details.Item().Text(approvedBy);
-                        });
-
-                        infoTable.Cell().Element(DataCellStyle).Column(details =>
-                        {
-                            details.Spacing(3);
-                            details.Item().Text("RECIPIENT NAME").Bold();
-                            details.Item().Text(recipientName);
-                        });
-
-                        infoTable.Cell().Element(DataCellStyle).Column(details =>
-                        {
-                            details.Spacing(3);
-                            details.Item().Text("ADDRESS").Bold();
-                            details.Item().Text(recipientAddress);
-                        });
-
-                        infoTable.Cell().Element(DataCellStyle).Column(details =>
-                        {
-                            details.Spacing(3);
-                            details.Item().Text("TELEPHONE").Bold();
-                            details.Item().Text(recipientTelephone);
-                        });
-                    });
-
-                    column.Item().PaddingTop(4).Text($"Verification code: {verificationCode}");
-
-                    if (attachmentNames.Count > 0)
-                    {
-                        column.Item().Column(files =>
-                        {
-                            files.Item().Text("ATTACHED DOCUMENTS").Bold();
-                            foreach (var name in attachmentNames)
+                            table.Cell().Element(DataCellStyle).Text(request.CreatedAt.ToString("dd/MM/yyyy"));
+                            table.Cell().Element(DataCellStyle).Column(details =>
                             {
-                                files.Item().Text($"- {name}");
-                            }
-                        });
-                    }
+                                details.Spacing(2);
+                                details.Item().Text(request.Description);
+                            });
+                            table.Cell().Element(DataCellStyle).AlignCenter().Text("-");
+                            table.Cell().Element(DataCellStyle).AlignRight().Text($"{request.Amount:N2} {request.Currency}").Bold();
 
-                    column.Item().PaddingTop(8).Row(row =>
-                    {
-                        row.Spacing(24);
-                        row.RelativeItem().Element(container => ComposeSignatureBlock(container, "Finance Manager", reviewedBy ?? "-", financeProcessing?.AuthorizedAt, headFinanceSignature));
-                        row.RelativeItem().Element(container => ComposeSignatureBlock(container, "CEO", ceoApprovedBy ?? "-", finalApproval?.ApprovedAt, ceoSignature));
+                            table.Cell().ColumnSpan(3).Element(DataCellStyle).Text($"AMOUNT IN WORD: {ToAmountInWords(request.Amount, string.IsNullOrWhiteSpace(request.Currency) ? "GHS" : request.Currency)}".ToUpperInvariant()).Bold();
+                            table.Cell().Element(DataCellStyle).AlignRight().Text($"{request.Amount:N2}").Bold();
+                        });
+
+                        column.Item().PaddingTop(6).Table(infoTable =>
+                        {
+                            infoTable.ColumnsDefinition(columns =>
+                            {
+                                columns.RelativeColumn();
+                                columns.RelativeColumn();
+                                columns.RelativeColumn();
+                            });
+
+                            infoTable.Cell().Element(DataCellStyle).Column(details =>
+                            {
+                                details.Spacing(3);
+                                details.Item().Text("PREPARED BY").Bold();
+                                details.Item().Text(preparedBy);
+                            });
+
+                            infoTable.Cell().Element(DataCellStyle).Column(details =>
+                            {
+                                details.Spacing(3);
+                                details.Item().Text("REVIEWED BY").Bold();
+                                details.Item().Text(reviewedBy);
+                            });
+
+                            infoTable.Cell().Element(DataCellStyle).Column(details =>
+                            {
+                                details.Spacing(3);
+                                details.Item().Text("APPROVED BY").Bold();
+                                details.Item().Text(approvedBy);
+                            });
+
+                            infoTable.Cell().Element(DataCellStyle).Column(details =>
+                            {
+                                details.Spacing(3);
+                                details.Item().Text("RECIPIENT NAME").Bold();
+                                details.Item().Text(recipientName);
+                            });
+
+                            infoTable.Cell().Element(DataCellStyle).Column(details =>
+                            {
+                                details.Spacing(3);
+                                details.Item().Text("ADDRESS").Bold();
+                                details.Item().Text(recipientAddress);
+                            });
+
+                            infoTable.Cell().Element(DataCellStyle).Column(details =>
+                            {
+                                details.Spacing(3);
+                                details.Item().Text("TELEPHONE").Bold();
+                                details.Item().Text(recipientTelephone);
+                            });
+                        });
+
+                        column.Item().PaddingTop(4).Text($"Verification code: {verificationCode}");
+
+                        if (attachmentNames.Count > 0)
+                        {
+                            column.Item().Column(files =>
+                            {
+                                files.Item().Text("ATTACHED DOCUMENTS").Bold();
+                                foreach (var name in attachmentNames)
+                                {
+                                    files.Item().Text($"- {name}");
+                                }
+                            });
+                        }
+
+                        column.Item().PaddingTop(8).Row(row =>
+                        {
+                            row.Spacing(24);
+                            row.RelativeItem().Element(container => ComposeSignatureBlock(container, "Finance Manager", reviewedBy ?? "-", financeProcessing?.AuthorizedAt, headFinanceSignature));
+                            row.RelativeItem().Element(container => ComposeSignatureBlock(container, "CEO", ceoApprovedBy ?? "-", finalApproval?.ApprovedAt, ceoSignature));
+                        });
                     });
                 });
-            });
-        }).GeneratePdf();
+            }).GeneratePdf();
+        }
+        catch (Exception exception)
+        {
+            _logger.LogError(exception, "PDF generation failed for payment request {RequestId}.", request.Id);
+            return ServiceResult<FileDownloadDto>.Fail(ServiceResultType.Conflict, "The PDF could not be generated. Check the PV data, logo/signature files, and QuestPDF configuration.");
+        }
 
         if (request.Status == "Approved")
         {
@@ -939,16 +948,16 @@ public class PaymentService : IPaymentService
     {
         if (string.IsNullOrWhiteSpace(paymentType))
         {
-            return "Once-off";
+            return "One-off";
         }
 
         return paymentType.Trim().ToLowerInvariant() switch
         {
-            "one-off" => "Once-off",
-            "one off" => "Once-off",
-            "once off" => "Once-off",
-            "once-off" => "Once-off",
-            "one month" => "Once-off",
+            "one-off" => "One-off",
+            "one off" => "One-off",
+            "once off" => "One-off",
+            "once-off" => "One-off",
+            "one month" => "One-off",
             "recurring" => "Recurring",
             _ => paymentType.Trim()
         };
@@ -1009,8 +1018,7 @@ public class PaymentService : IPaymentService
         candidatePaths.Add(Path.Combine(_environment.ContentRootPath, "..", "Xds.Approval.web", "public", "assets", "xdslogo.png"));
         candidatePaths.Add(Path.Combine(_environment.ContentRootPath, "..", "Xds.Approval.web", "src", "assets", "hero.png"));
 
-        var existingPath = candidatePaths.FirstOrDefault(File.Exists);
-        return existingPath is null ? null : File.ReadAllBytes(existingPath);
+        return ReadFirstValidImage(candidatePaths, "PDF logo");
     }
 
     private static string BuildDocumentNumber(PaymentRequest request)
@@ -1179,9 +1187,58 @@ public class PaymentService : IPaymentService
             candidatePaths.Add(Path.Combine(_environment.ContentRootPath, "logo", "signatures", "ceo-signature.png"));
         }
 
-        var existingPath = candidatePaths.FirstOrDefault(File.Exists);
+        return ReadFirstValidImage(candidatePaths, $"{role} signature");
+    }
 
-        return existingPath is null ? null : File.ReadAllBytes(existingPath);
+    private byte[]? ReadFirstValidImage(IEnumerable<string> candidatePaths, string assetName)
+    {
+        foreach (var path in candidatePaths.Where(path => !string.IsNullOrWhiteSpace(path)).Distinct(StringComparer.OrdinalIgnoreCase))
+        {
+            if (!File.Exists(path))
+            {
+                continue;
+            }
+
+            try
+            {
+                var bytes = File.ReadAllBytes(path);
+                if (IsPng(bytes) || IsJpeg(bytes))
+                {
+                    return bytes;
+                }
+
+                _logger.LogWarning("{AssetName} exists but is not a valid PNG or JPEG: {AssetPath}", assetName, path);
+            }
+            catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+            {
+                _logger.LogWarning(exception, "Unable to read {AssetName} from {AssetPath}.", assetName, path);
+            }
+        }
+
+        _logger.LogWarning("{AssetName} was not found or was not a valid PNG/JPEG. The PDF will be generated without it.", assetName);
+        return null;
+    }
+
+    private static bool IsPng(byte[] bytes)
+    {
+        return bytes.Length > 8
+            && bytes[0] == 0x89
+            && bytes[1] == 0x50
+            && bytes[2] == 0x4E
+            && bytes[3] == 0x47
+            && bytes[4] == 0x0D
+            && bytes[5] == 0x0A
+            && bytes[6] == 0x1A
+            && bytes[7] == 0x0A;
+    }
+
+    private static bool IsJpeg(byte[] bytes)
+    {
+        return bytes.Length > 3
+            && bytes[0] == 0xFF
+            && bytes[1] == 0xD8
+            && bytes[^2] == 0xFF
+            && bytes[^1] == 0xD9;
     }
 
     private static void ComposeSection(IContainer container, string title, Action<ColumnDescriptor> content)

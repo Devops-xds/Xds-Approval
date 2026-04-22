@@ -1,5 +1,7 @@
 using System.Text;
+using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
@@ -120,12 +122,20 @@ builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IPaymentService, PaymentService>();
 
 var app = builder.Build();
+var startupLogger = app.Services.GetRequiredService<ILoggerFactory>().CreateLogger("Startup");
+
+EnsureStorageFolders(app.Configuration, app.Environment, startupLogger);
 
 // Migration auto
-using (var scope = app.Services.CreateScope())
+try
 {
+    using var scope = app.Services.CreateScope();
     var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
     dbContext.Database.Migrate();
+}
+catch (Exception exception) when (exception is SqlException or InvalidOperationException)
+{
+    startupLogger.LogError(exception, "Database migration failed. The API will keep running and database endpoints will return a controlled error until SQL Server is reachable.");
 }
 
 // Pipeline
@@ -134,6 +144,38 @@ if (app.Environment.IsDevelopment())
     app.UseSwagger();
     app.UseSwaggerUI();
 }
+
+app.UseExceptionHandler(errorApp =>
+{
+    errorApp.Run(async context =>
+    {
+        var exception = context.Features.Get<IExceptionHandlerFeature>()?.Error;
+        var logger = context.RequestServices.GetRequiredService<ILoggerFactory>().CreateLogger("UnhandledException");
+
+        var (statusCode, title, detail) = exception switch
+        {
+            SqlException => (StatusCodes.Status503ServiceUnavailable, "Database unavailable", "SQL Server is unavailable or rejected the request. Check the connection string, database schema, and SQL Server service."),
+            DbUpdateException => (StatusCodes.Status503ServiceUnavailable, "Database update failed", "The request could not be saved. Check required database columns, constraints, and migrations."),
+            IOException => (StatusCodes.Status503ServiceUnavailable, "File storage unavailable", "The API could not access the required upload or document folder."),
+            UnauthorizedAccessException => (StatusCodes.Status503ServiceUnavailable, "File storage permission denied", "The API does not have permission to access the required upload or document folder."),
+            _ => (StatusCodes.Status500InternalServerError, "Server error", app.Environment.IsDevelopment()
+                ? exception?.Message ?? "Unexpected server error."
+                : "Unexpected server error.")
+        };
+
+        logger.LogError(exception, "{Title} while handling {Method} {Path}", title, context.Request.Method, context.Request.Path);
+
+        context.Response.StatusCode = statusCode;
+        context.Response.ContentType = "application/problem+json";
+        await context.Response.WriteAsJsonAsync(new
+        {
+            type = "about:blank",
+            title,
+            status = statusCode,
+            detail
+        });
+    });
+});
 
 // ⚠️ ORDRE IMPORTANT
 app.UseStaticFiles();
@@ -148,6 +190,27 @@ app.UseAuthorization();
 app.MapControllers();
 
 app.Run();
+
+static void EnsureStorageFolders(IConfiguration configuration, IWebHostEnvironment environment, ILogger logger)
+{
+    var folders = new[]
+    {
+        configuration["FileStorage:UploadFolder"],
+        configuration["PdfTemplate:ArchiveFolder"],
+        Path.Combine("wwwroot", "uploads"),
+        Path.Combine("wwwroot", "documents")
+    };
+
+    foreach (var folder in folders.Where(folder => !string.IsNullOrWhiteSpace(folder)).Distinct(StringComparer.OrdinalIgnoreCase))
+    {
+        var fullPath = Path.IsPathRooted(folder!)
+            ? folder!
+            : Path.Combine(environment.ContentRootPath, folder!);
+
+        Directory.CreateDirectory(fullPath);
+        logger.LogInformation("Ensured storage folder exists: {StorageFolder}", fullPath);
+    }
+}
 
 
 // using System.Text;

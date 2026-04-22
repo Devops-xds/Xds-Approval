@@ -27,14 +27,14 @@ const PaymentRequestForm: React.FC<PaymentRequestFormProps> = ({ onSuccess, onCa
   const [amount, setAmount] = useState('');
   const [currency, setCurrency] = useState('GHS');
   const [deadline, setDeadline] = useState('');
-  const [paymentType, setPaymentType] = useState<PaymentType>('Once-off');
+  const [paymentType, setPaymentType] = useState<PaymentType>('One-off');
   const [files, setFiles] = useState<File[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const currencies = ['GHS', 'USD', 'EUR', 'GBP'];
-  const paymentTypes: PaymentType[] = ['Once-off', 'Recurring'];
+  const paymentTypes: PaymentType[] = ['One-off', 'Recurring'];
 
   const validate = () => {
     const newErrors: Record<string, string> = {};
