@@ -583,17 +583,20 @@ public class PaymentService : IPaymentService
             });
         }).GeneratePdf();
 
-        try
+        if (request.Status == "Approved")
         {
-            SaveArchivedPdf(request.Id, pdfBytes, documentNumber);
-        }
-        catch (Exception exception)
-        {
-            _logger.LogWarning(
-                exception,
-                "PDF generated for payment request {RequestId} but archive persistence failed at {ArchiveRoot}.",
-                request.Id,
-                ResolveArchiveRoot());
+            try
+            {
+                SaveArchivedPdf(request.Id, pdfBytes, documentNumber);
+            }
+            catch (Exception exception)
+            {
+                _logger.LogWarning(
+                    exception,
+                    "PDF generated for payment request {RequestId} but archive persistence failed at {ArchiveRoot}.",
+                    request.Id,
+                    ResolveArchiveRoot());
+            }
         }
 
         return ServiceResult<FileDownloadDto>.Ok(new FileDownloadDto
@@ -1260,9 +1263,9 @@ public class PaymentService : IPaymentService
             return ServiceResult<PaymentRequest>.Fail(ServiceResultType.Conflict, "You are not allowed to access this document.");
         }
 
-        if (request.Status != "Approved")
+        if (request.Status is not ("FinancePrepared" or "FinanceAuthorized" or "Approved"))
         {
-            return ServiceResult<PaymentRequest>.Fail(ServiceResultType.Conflict, "The PDF document is available only after the CEO final signature.");
+            return ServiceResult<PaymentRequest>.Fail(ServiceResultType.Conflict, "The PDF document is available after Finance prepares the PV.");
         }
 
         return ServiceResult<PaymentRequest>.Ok(request);

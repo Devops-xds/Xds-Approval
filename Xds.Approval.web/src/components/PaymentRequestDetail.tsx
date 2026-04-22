@@ -350,6 +350,8 @@ const PaymentRequestDetail: React.FC<PaymentRequestDetailProps> = ({ requestId, 
     );
   }
 
+  const canDownloadGeneratedPv = ['FinancePrepared', 'FinanceAuthorized', 'Approved'].includes(request.status);
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -375,11 +377,11 @@ const PaymentRequestDetail: React.FC<PaymentRequestDetailProps> = ({ requestId, 
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full lg:w-auto">
           <button
             onClick={handleDownloadPDF}
-            disabled={request.status !== 'Approved'}
+            disabled={!canDownloadGeneratedPv}
             className="w-full lg:w-auto px-4 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors flex items-center justify-center gap-2 disabled:cursor-not-allowed disabled:opacity-50"
           >
             <Download className="w-4 h-4" />
-            Final PDF
+            Download PV
           </button>
           <button
             onClick={handleDownloadArchive}
