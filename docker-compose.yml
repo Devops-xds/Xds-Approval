@@ -5,7 +5,7 @@ services:
     environment:
       ACCEPT_EULA: "Y"
       MSSQL_PID: "${MSSQL_PID:-Developer}"
-      MSSQL_SA_PASSWORD: "${MSSQL_SA_PASSWORD}"
+      MSSQL_SA_PASSWORD: "${MSSQL_SA_PASSWORD:-ChangeThisToAStrongPassword123!}"
     ports:
       - "${DB_BIND_ADDRESS:-127.0.0.1}:${DB_PORT:-1433}:1433"
     volumes:
@@ -33,8 +33,12 @@ services:
     environment:
       ASPNETCORE_ENVIRONMENT: "Production"
       ASPNETCORE_URLS: "http://+:8080"
-      ConnectionStrings__DefaultConnection: "Server=db;Database=${SQL_DATABASE:-XdsApprovalDb};User Id=sa;Password=${MSSQL_SA_PASSWORD};Encrypt=false;TrustServerCertificate=true"
-      Jwt__Key: "${JWT_KEY}"
+      ConnectionStrings__DefaultConnection: "Server=db;Database=${SQL_DATABASE:-XdsApprovalDb};User Id=sa;Password=${MSSQL_SA_PASSWORD:-ChangeThisToAStrongPassword123!};Encrypt=false;TrustServerCertificate=true"
+      SQL_SERVER: "db"
+      SQL_DATABASE: "${SQL_DATABASE:-XdsApprovalDb}"
+      SQL_USER: "sa"
+      MSSQL_SA_PASSWORD: "${MSSQL_SA_PASSWORD:-ChangeThisToAStrongPassword123!}"
+      Jwt__Key: "${JWT_KEY:-ChangeThisToALongRandomJwtKeyAtLeast32Chars}"
       Jwt__Issuer: "${JWT_ISSUER:-Xds.Approval.Api}"
       Jwt__Audience: "${JWT_AUDIENCE:-Xds.Approval.Client}"
       Cors__AllowedOrigins__0: "${APP_BASE_URL:-http://localhost}"

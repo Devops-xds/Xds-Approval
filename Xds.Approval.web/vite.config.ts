@@ -8,6 +8,23 @@ export default defineConfig(({ mode }) => ({
   server: {
     host: "::",
     port: 8084,
+    proxy: {
+      "/api": {
+        target: process.env.VITE_API_PROXY_TARGET || "http://127.0.0.1:5256",
+        changeOrigin: true,
+        secure: false,
+      },
+      "/uploads": {
+        target: process.env.VITE_API_PROXY_TARGET || "http://127.0.0.1:5256",
+        changeOrigin: true,
+        secure: false,
+      },
+      "/documents": {
+        target: process.env.VITE_API_PROXY_TARGET || "http://127.0.0.1:5256",
+        changeOrigin: true,
+        secure: false,
+      },
+    },
   },
   plugins: [
     react()

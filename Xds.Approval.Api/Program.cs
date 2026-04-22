@@ -32,12 +32,20 @@ var allowedOrigins = builder.Configuration
     ?? ["http://localhost:8084", "http://127.0.0.1:8084", "http://192.168.1.2:8084"];
 
 const string CorsPolicy = "FrontendPolicy";
+var defaultConnectionString = BuildDefaultConnectionString(builder.Configuration);
 
 // DB
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseSqlServer(
-        builder.Configuration.GetConnectionString("DefaultConnection"),
-        sqlOptions => sqlOptions.UseCompatibilityLevel(120)));
+        defaultConnectionString,
+        sqlOptions =>
+        {
+            sqlOptions.UseCompatibilityLevel(120);
+            sqlOptions.EnableRetryOnFailure(
+                maxRetryCount: 10,
+                maxRetryDelay: TimeSpan.FromSeconds(10),
+                errorNumbersToAdd: null);
+        }));
 
 // Controllers
 builder.Services.AddControllers();
@@ -210,6 +218,24 @@ static void EnsureStorageFolders(IConfiguration configuration, IWebHostEnvironme
         Directory.CreateDirectory(fullPath);
         logger.LogInformation("Ensured storage folder exists: {StorageFolder}", fullPath);
     }
+}
+
+static string BuildDefaultConnectionString(IConfiguration configuration)
+{
+    var explicitConnectionString = configuration.GetConnectionString("DefaultConnection");
+    var sqlPassword = configuration["MSSQL_SA_PASSWORD"] ?? configuration["SQL_PASSWORD"];
+
+    if (string.IsNullOrWhiteSpace(sqlPassword))
+    {
+        return explicitConnectionString
+            ?? throw new InvalidOperationException("Database configuration is missing: ConnectionStrings:DefaultConnection.");
+    }
+
+    var sqlServer = configuration["SQL_SERVER"] ?? "127.0.0.1,1433";
+    var sqlDatabase = configuration["SQL_DATABASE"] ?? "XdsApprovalDb";
+    var sqlUser = configuration["SQL_USER"] ?? "sa";
+
+    return $"Server={sqlServer};Database={sqlDatabase};User Id={sqlUser};Password={sqlPassword};Encrypt=false;TrustServerCertificate=true";
 }
 
 
