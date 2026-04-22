@@ -255,6 +255,7 @@ static async Task ApplyDatabaseMigrationsAsync(IServiceProvider services, ILogge
             }
 
             await dbContext.Database.MigrateAsync();
+            await RepairDatabaseSchemaAsync(dbContext, logger);
             logger.LogInformation("Database migration check completed successfully.");
             return;
         }
@@ -279,6 +280,158 @@ static async Task ApplyDatabaseMigrationsAsync(IServiceProvider services, ILogge
             await Task.Delay(retryDelay);
         }
     }
+}
+
+static async Task RepairDatabaseSchemaAsync(AppDbContext dbContext, ILogger logger)
+{
+    logger.LogInformation("Checking database schema drift for required columns.");
+
+    await dbContext.Database.ExecuteSqlRawAsync("""
+        IF OBJECT_ID(N'[AuthUsers]', N'U') IS NOT NULL
+        BEGIN
+            IF COL_LENGTH('AuthUsers', 'Email') IS NULL
+            BEGIN
+                ALTER TABLE [AuthUsers] ADD [Email] nvarchar(180) NULL;
+            END;
+
+            IF COL_LENGTH('AuthUsers', 'FullName') IS NULL
+            BEGIN
+                ALTER TABLE [AuthUsers] ADD [FullName] nvarchar(150) NULL;
+            END;
+
+            IF COL_LENGTH('AuthUsers', 'Department') IS NULL
+            BEGIN
+                ALTER TABLE [AuthUsers] ADD [Department] nvarchar(100) NULL;
+            END;
+
+            EXEC(N'
+                UPDATE [AuthUsers]
+                SET [Email] = [Username]
+                WHERE [Email] IS NULL OR LTRIM(RTRIM([Email])) = '''';
+            ');
+
+            EXEC(N'
+                UPDATE [AuthUsers]
+                SET [FullName] = [Username]
+                WHERE [FullName] IS NULL OR LTRIM(RTRIM([FullName])) = '''';
+            ');
+
+            EXEC(N'
+                UPDATE [AuthUsers]
+                SET [Department] = N''General''
+                WHERE [Department] IS NULL OR LTRIM(RTRIM([Department])) = '''';
+            ');
+        END;
+
+        IF OBJECT_ID(N'[PaymentRequests]', N'U') IS NOT NULL
+        BEGIN
+            IF COL_LENGTH('PaymentRequests', 'Currency') IS NULL
+            BEGIN
+                ALTER TABLE [PaymentRequests] ADD [Currency] nvarchar(10) NULL;
+            END;
+
+            IF COL_LENGTH('PaymentRequests', 'Deadline') IS NULL
+            BEGIN
+                ALTER TABLE [PaymentRequests]
+                ADD [Deadline] datetime2 NOT NULL
+                CONSTRAINT [DF_PaymentRequests_Deadline_RuntimeRepair] DEFAULT (GETUTCDATE());
+            END;
+
+            IF COL_LENGTH('PaymentRequests', 'PaymentType') IS NULL
+            BEGIN
+                ALTER TABLE [PaymentRequests] ADD [PaymentType] nvarchar(50) NULL;
+            END;
+
+            EXEC(N'
+                UPDATE [PaymentRequests]
+                SET [Currency] = N''GHS''
+                WHERE [Currency] IS NULL OR LTRIM(RTRIM([Currency])) = '''';
+            ');
+
+            EXEC(N'
+                UPDATE [PaymentRequests]
+                SET [PaymentType] = N''One-off''
+                WHERE [PaymentType] IS NULL
+                   OR LTRIM(RTRIM([PaymentType])) = ''''
+                   OR [PaymentType] IN (N''One month'', N''One off'', N''one-off'', N''one off'', N''Once-off'', N''once off'', N''once-off'');
+            ');
+        END;
+
+        IF OBJECT_ID(N'[Approvals]', N'U') IS NOT NULL
+        BEGIN
+            IF COL_LENGTH('Approvals', 'Stage') IS NULL
+            BEGIN
+                ALTER TABLE [Approvals] ADD [Stage] nvarchar(50) NULL;
+            END;
+
+            EXEC(N'
+                UPDATE [Approvals]
+                SET [Stage] = N''Initial''
+                WHERE [Stage] IS NULL OR LTRIM(RTRIM([Stage])) = '''';
+            ');
+        END;
+
+        IF OBJECT_ID(N'[FinanceProcessings]', N'U') IS NOT NULL
+        BEGIN
+            IF COL_LENGTH('FinanceProcessings', 'ProcessedBy') IS NOT NULL
+               AND COL_LENGTH('FinanceProcessings', 'PreparedBy') IS NULL
+            BEGIN
+                EXEC sp_rename N'[FinanceProcessings].[ProcessedBy]', N'PreparedBy', N'COLUMN';
+            END;
+
+            IF COL_LENGTH('FinanceProcessings', 'ProcessedAt') IS NOT NULL
+               AND COL_LENGTH('FinanceProcessings', 'PreparedAt') IS NULL
+            BEGIN
+                EXEC sp_rename N'[FinanceProcessings].[ProcessedAt]', N'PreparedAt', N'COLUMN';
+            END;
+
+            IF COL_LENGTH('FinanceProcessings', 'PreparedBy') IS NULL
+            BEGIN
+                ALTER TABLE [FinanceProcessings]
+                ADD [PreparedBy] int NOT NULL
+                CONSTRAINT [DF_FinanceProcessings_PreparedBy_RuntimeRepair] DEFAULT (0);
+            END;
+
+            IF COL_LENGTH('FinanceProcessings', 'PreparedAt') IS NULL
+            BEGIN
+                ALTER TABLE [FinanceProcessings]
+                ADD [PreparedAt] datetime2 NOT NULL
+                CONSTRAINT [DF_FinanceProcessings_PreparedAt_RuntimeRepair] DEFAULT (GETUTCDATE());
+            END;
+
+            IF COL_LENGTH('FinanceProcessings', 'AuthorizedBy') IS NULL
+            BEGIN
+                ALTER TABLE [FinanceProcessings] ADD [AuthorizedBy] int NULL;
+            END;
+
+            IF COL_LENGTH('FinanceProcessings', 'AuthorizedAt') IS NULL
+            BEGIN
+                ALTER TABLE [FinanceProcessings] ADD [AuthorizedAt] datetime2 NULL;
+            END;
+
+            IF COL_LENGTH('FinanceProcessings', 'CompanyName') IS NULL
+            BEGIN
+                ALTER TABLE [FinanceProcessings] ADD [CompanyName] nvarchar(255) NULL;
+            END;
+
+            IF COL_LENGTH('FinanceProcessings', 'RecipientName') IS NULL
+            BEGIN
+                ALTER TABLE [FinanceProcessings] ADD [RecipientName] nvarchar(255) NULL;
+            END;
+
+            IF COL_LENGTH('FinanceProcessings', 'RecipientAddress') IS NULL
+            BEGIN
+                ALTER TABLE [FinanceProcessings] ADD [RecipientAddress] nvarchar(500) NULL;
+            END;
+
+            IF COL_LENGTH('FinanceProcessings', 'RecipientTelephone') IS NULL
+            BEGIN
+                ALTER TABLE [FinanceProcessings] ADD [RecipientTelephone] nvarchar(50) NULL;
+            END;
+        END;
+        """);
+
+    logger.LogInformation("Database schema drift check completed.");
 }
 
 
