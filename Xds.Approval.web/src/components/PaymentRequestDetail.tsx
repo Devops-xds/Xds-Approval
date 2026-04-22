@@ -206,8 +206,16 @@ const PaymentRequestDetail: React.FC<PaymentRequestDetailProps> = ({ requestId, 
       return attachment.fileUrl;
     }
 
-    const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5256';
-    return new URL(attachment.fileUrl, baseUrl).toString();
+    const normalizedPath = attachment.fileUrl.startsWith('/')
+      ? attachment.fileUrl
+      : `/${attachment.fileUrl}`;
+    const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || '';
+
+    if (apiBaseUrl.startsWith('http://') || apiBaseUrl.startsWith('https://')) {
+      return new URL(normalizedPath, apiBaseUrl).toString();
+    }
+
+    return `${window.location.origin}${normalizedPath}`;
   };
 
   const canPreviewAttachment = (attachment: Attachment) => {
@@ -225,19 +233,35 @@ const PaymentRequestDetail: React.FC<PaymentRequestDetailProps> = ({ requestId, 
     setPreviewAttachment(attachment);
   };
 
-  const handleDownloadAttachment = (attachment: Attachment) => {
+  const handleDownloadAttachment = async (attachment: Attachment) => {
     const url = getAttachmentUrl(attachment);
     if (!url) {
       toast.error('Download unavailable');
       return;
     }
 
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = attachment.fileName;
-    link.target = '_blank';
-    link.rel = 'noopener noreferrer';
-    link.click();
+    try {
+      const response = await fetch(url);
+      if (!response.ok) {
+        throw new Error(`Download failed with status ${response.status}`);
+      }
+
+      const blob = await response.blob();
+      const objectUrl = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = objectUrl;
+      link.download = attachment.fileName || 'attachment';
+      document.body.appendChild(link);
+      link.click();
+      window.setTimeout(() => {
+        URL.revokeObjectURL(objectUrl);
+        link.remove();
+      }, 1000);
+    } catch (err: any) {
+      toast.error('Download error', {
+        description: err.message || 'Unable to download the attachment.',
+      });
+    }
   };
 
   const formatCurrency = (amount: number) => {
