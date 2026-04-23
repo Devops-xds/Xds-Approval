@@ -32,15 +32,22 @@ const Dashboard: React.FC<DashboardProps> = ({ requests, isLoading, onViewReques
   const { colorTheme } = useAppContext();
   const role = user?.role || 'User';
   const stats = useMemo(() => {
+    const nonRejectedRequests = requests.filter((r) => r.status !== 'Rejected');
     const total = requests.length;
     const pending = requests.filter((r) => r.status === 'Pending').length;
     const approved = requests.filter((r) => r.status === 'Approved').length;
     const ceoApproved = requests.filter((r) => r.status === 'CEOApproved').length;
+    const ceoApprovedTotal = requests.filter((r) =>
+      r.status === 'CEOApproved' ||
+      r.status === 'FinancePrepared' ||
+      r.status === 'FinanceAuthorized' ||
+      r.status === 'Approved'
+    ).length;
     const rejected = requests.filter((r) => r.status === 'Rejected').length;
     const financePrepared = requests.filter((r) => r.status === 'FinancePrepared').length;
     const financeAuthorized = requests.filter((r) => r.status === 'FinanceAuthorized').length;
-    const totalAmount = requests.reduce((sum, r) => sum + r.amount, 0);
-    const averageAmount = total > 0 ? totalAmount / total : 0;
+    const totalAmount = nonRejectedRequests.reduce((sum, r) => sum + r.amount, 0);
+    const averageAmount = nonRejectedRequests.length > 0 ? totalAmount / nonRejectedRequests.length : 0;
     const approvedAmount = requests
       .filter((r) => r.status === 'Approved' || r.status === 'CEOApproved' || r.status === 'FinanceAuthorized' || r.status === 'FinancePrepared')
       .reduce((sum, r) => sum + r.amount, 0);
@@ -48,7 +55,20 @@ const Dashboard: React.FC<DashboardProps> = ({ requests, isLoading, onViewReques
       .filter((r) => r.deadline && (r.status === 'Pending' || r.status === 'CEOApproved' || r.status === 'FinancePrepared' || r.status === 'FinanceAuthorized'))
       .sort((a, b) => new Date(a.deadline!).getTime() - new Date(b.deadline!).getTime())[0];
 
-    return { total, pending, approved, ceoApproved, rejected, financePrepared, financeAuthorized, totalAmount, averageAmount, approvedAmount, nearestDeadlineRequest };
+    return {
+      total,
+      pending,
+      approved,
+      ceoApproved,
+      ceoApprovedTotal,
+      rejected,
+      financePrepared,
+      financeAuthorized,
+      totalAmount,
+      averageAmount,
+      approvedAmount,
+      nearestDeadlineRequest,
+    };
   }, [requests]);
 
   const recentRequests = useMemo(() => {
@@ -62,7 +82,11 @@ const Dashboard: React.FC<DashboardProps> = ({ requests, isLoading, onViewReques
   };
 
   const totalAmountLabel = useMemo(
-    () => formatCurrencyTotals(requests.map((request) => ({ amount: request.amount, currency: request.currency }))),
+    () => formatCurrencyTotals(
+      requests
+        .filter((request) => request.status !== 'Rejected')
+        .map((request) => ({ amount: request.amount, currency: request.currency })),
+    ),
     [requests],
   );
 
@@ -107,7 +131,7 @@ const Dashboard: React.FC<DashboardProps> = ({ requests, isLoading, onViewReques
           },
           {
             label: 'CEO approved',
-            value: stats.ceoApproved,
+            value: stats.ceoApprovedTotal,
             icon: <CheckCircle2 className="w-5 h-5" />,
             color: 'from-emerald-500 to-green-500',
             bgLight: 'bg-emerald-50',
@@ -166,7 +190,7 @@ const Dashboard: React.FC<DashboardProps> = ({ requests, isLoading, onViewReques
           },
           {
             label: 'CEO approved',
-            value: stats.ceoApproved,
+            value: stats.ceoApprovedTotal,
             icon: <CheckCircle2 className="w-5 h-5" />,
             color: 'from-emerald-500 to-green-500',
             bgLight: 'bg-emerald-50',
