@@ -358,6 +358,74 @@ public class PaymentService : IPaymentService
         return ServiceResult<AttachmentResponseDto>.Ok(MapToAttachmentResponse(attachment), "File uploaded successfully.");
     }
 
+    public async Task<ServiceResult<FileDownloadDto>> GetAttachmentAsync(int requestId, int attachmentId, int currentUserId, string currentUserRole)
+    {
+        var request = await _context.PaymentRequests
+            .Include(paymentRequest => paymentRequest.Attachments)
+            .FirstOrDefaultAsync(paymentRequest => paymentRequest.Id == requestId);
+
+        if (request is null)
+        {
+            return ServiceResult<FileDownloadDto>.Fail(ServiceResultType.NotFound, "Payment request not found.");
+        }
+
+        var canAccess = currentUserRole switch
+        {
+            "User" => request.RequestedBy == currentUserId,
+            "CEO" => true,
+            "Finance" => true,
+            "HeadOfFinance" => true,
+            _ => false
+        };
+
+        if (!canAccess)
+        {
+            return ServiceResult<FileDownloadDto>.Fail(ServiceResultType.Conflict, "You are not allowed to access this attachment.");
+        }
+
+        var attachment = request.Attachments?.FirstOrDefault(item => item.Id == attachmentId);
+        if (attachment is null)
+        {
+            return ServiceResult<FileDownloadDto>.Fail(ServiceResultType.NotFound, "Attachment not found.");
+        }
+
+        var attachmentPath = ResolveAttachmentPath(attachment);
+        if (string.IsNullOrWhiteSpace(attachmentPath) || !File.Exists(attachmentPath))
+        {
+            _logger.LogWarning(
+                "Attachment file missing for request {RequestId}, attachment {AttachmentId}. Stored path: {StoredPath}",
+                requestId,
+                attachmentId,
+                attachment.FilePath);
+
+            return ServiceResult<FileDownloadDto>.Fail(ServiceResultType.NotFound, "Attachment file not found on the server.");
+        }
+
+        byte[] fileBytes;
+        try
+        {
+            fileBytes = await File.ReadAllBytesAsync(attachmentPath);
+        }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+        {
+            _logger.LogError(
+                exception,
+                "Unable to read attachment file for request {RequestId}, attachment {AttachmentId} from {AttachmentPath}",
+                requestId,
+                attachmentId,
+                attachmentPath);
+
+            throw;
+        }
+
+        return ServiceResult<FileDownloadDto>.Ok(new FileDownloadDto
+        {
+            Content = fileBytes,
+            ContentType = string.IsNullOrWhiteSpace(attachment.ContentType) ? "application/octet-stream" : attachment.ContentType,
+            FileName = string.IsNullOrWhiteSpace(attachment.FileName) ? Path.GetFileName(attachmentPath) : attachment.FileName
+        });
+    }
+
     public async Task<ServiceResult<FileDownloadDto>> GeneratePdfAsync(int requestId, int currentUserId, string currentUserRole)
     {
         var accessibleRequestResult = await GetAccessibleProcessedRequestAsync(requestId, currentUserId, currentUserRole);
@@ -965,11 +1033,9 @@ public class PaymentService : IPaymentService
 
     private AttachmentResponseDto MapToAttachmentResponse(Attachment attachment)
     {
-        var absolutePath = attachment.FilePath.StartsWith("/", StringComparison.Ordinal)
-            ? Path.Combine(_environment.ContentRootPath, "wwwroot", attachment.FilePath.TrimStart('/').Replace('/', Path.DirectorySeparatorChar))
-            : attachment.FilePath;
+        var absolutePath = ResolveAttachmentPath(attachment);
 
-        var fileSize = File.Exists(absolutePath)
+        var fileSize = !string.IsNullOrWhiteSpace(absolutePath) && File.Exists(absolutePath)
             ? new FileInfo(absolutePath).Length
             : 0;
 
@@ -982,6 +1048,57 @@ public class PaymentService : IPaymentService
             FileUrl = attachment.FilePath,
             UploadedAt = attachment.UploadedAt
         };
+    }
+
+    private string? ResolveAttachmentPath(Attachment attachment)
+    {
+        if (string.IsNullOrWhiteSpace(attachment.FilePath))
+        {
+            return null;
+        }
+
+        var normalizedPath = attachment.FilePath.Replace('/', Path.DirectorySeparatorChar).TrimStart(Path.DirectorySeparatorChar);
+        var configuredUploadFolder = _configuration["FileStorage:UploadFolder"];
+        var uploadRoot = string.IsNullOrWhiteSpace(configuredUploadFolder)
+            ? Path.Combine(_environment.ContentRootPath, "wwwroot", "uploads")
+            : Path.IsPathRooted(configuredUploadFolder)
+                ? configuredUploadFolder
+                : Path.Combine(_environment.ContentRootPath, configuredUploadFolder);
+
+        var fileName = Path.GetFileName(normalizedPath);
+        var requestFolderName = attachment.PaymentRequestId.ToString();
+
+        var candidatePaths = new List<string>();
+
+        if (Path.IsPathRooted(attachment.FilePath))
+        {
+            candidatePaths.Add(attachment.FilePath);
+        }
+
+        candidatePaths.Add(Path.Combine(_environment.ContentRootPath, normalizedPath));
+        candidatePaths.Add(Path.Combine(_environment.ContentRootPath, "wwwroot", normalizedPath));
+
+        if (!string.IsNullOrWhiteSpace(_environment.WebRootPath))
+        {
+            candidatePaths.Add(Path.Combine(_environment.WebRootPath, normalizedPath));
+        }
+
+        candidatePaths.Add(Path.Combine(uploadRoot, "payment-requests", requestFolderName, fileName));
+        candidatePaths.Add(Path.Combine(uploadRoot, fileName));
+
+        foreach (var candidatePath in candidatePaths
+                     .Where(path => !string.IsNullOrWhiteSpace(path))
+                     .Distinct(StringComparer.OrdinalIgnoreCase))
+        {
+            if (File.Exists(candidatePath))
+            {
+                return candidatePath;
+            }
+        }
+
+        return candidatePaths
+            .Where(path => !string.IsNullOrWhiteSpace(path))
+            .FirstOrDefault();
     }
 
     private static bool IsMimeTypeValidForExtension(string extension, string contentType)

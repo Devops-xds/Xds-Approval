@@ -103,6 +103,21 @@ public class PaymentRequestsController : ControllerBase
         };
     }
 
+    [HttpGet("{id}/attachments/{attachmentId:int}")]
+    [Authorize(Roles = "User,CEO,Finance,HeadOfFinance")]
+    public async Task<IActionResult> DownloadAttachment(int id, int attachmentId)
+    {
+        var result = await _service.GetAttachmentAsync(id, attachmentId, GetCurrentUserId(), GetCurrentUserRole());
+
+        return result.ResultType switch
+        {
+            ServiceResultType.NotFound => NotFound(result.Message),
+            ServiceResultType.Conflict => Conflict(result.Message),
+            ServiceResultType.ValidationError => BadRequest(result.Message),
+            _ => File(result.Data!.Content, result.Data.ContentType, result.Data.FileName)
+        };
+    }
+
     [HttpGet("{id}/document")]
     [Authorize(Roles = "User,CEO,Finance,HeadOfFinance")]
     public async Task<IActionResult> DownloadDocument(int id)

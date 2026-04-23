@@ -51,10 +51,20 @@ const PaymentRequestDetail: React.FC<PaymentRequestDetailProps> = ({ requestId, 
   const [recipientAddress, setRecipientAddress] = useState('');
   const [recipientTelephone, setRecipientTelephone] = useState('');
   const [previewAttachment, setPreviewAttachment] = useState<Attachment | null>(null);
+  const [previewUrl, setPreviewUrl] = useState('');
+  const [isPreviewLoading, setIsPreviewLoading] = useState(false);
 
   useEffect(() => {
     loadData();
   }, [requestId]);
+
+  useEffect(() => {
+    return () => {
+      if (previewUrl) {
+        URL.revokeObjectURL(previewUrl);
+      }
+    };
+  }, [previewUrl]);
 
   const loadData = async () => {
     setIsLoading(true);
@@ -200,53 +210,58 @@ const PaymentRequestDetail: React.FC<PaymentRequestDetailProps> = ({ requestId, 
     }
   };
 
-  const getAttachmentUrl = (attachment: Attachment) => {
-    if (!attachment.fileUrl) return '';
-    if (attachment.fileUrl.startsWith('http://') || attachment.fileUrl.startsWith('https://')) {
-      return attachment.fileUrl;
-    }
-
-    const normalizedPath = attachment.fileUrl.startsWith('/')
-      ? attachment.fileUrl
-      : `/${attachment.fileUrl}`;
-    const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || '';
-
-    if (apiBaseUrl.startsWith('http://') || apiBaseUrl.startsWith('https://')) {
-      return new URL(normalizedPath, apiBaseUrl).toString();
-    }
-
-    return `${window.location.origin}${normalizedPath}`;
-  };
-
   const canPreviewAttachment = (attachment: Attachment) => {
     const contentType = attachment.contentType?.toLowerCase() || '';
     return contentType.startsWith('image/') || contentType === 'application/pdf';
   };
 
-  const handlePreviewAttachment = (attachment: Attachment) => {
-    const url = getAttachmentUrl(attachment);
-    if (!url) {
+  const closePreview = () => {
+    if (previewUrl) {
+      URL.revokeObjectURL(previewUrl);
+    }
+
+    setPreviewAttachment(null);
+    setPreviewUrl('');
+    setIsPreviewLoading(false);
+  };
+
+  const handlePreviewAttachment = async (attachment: Attachment) => {
+    if (!attachment.id) {
       toast.error('Preview unavailable');
       return;
     }
 
     setPreviewAttachment(attachment);
+    setIsPreviewLoading(true);
+
+    try {
+      const blob = await api.downloadAttachment(requestId, attachment.id);
+      const objectUrl = URL.createObjectURL(blob);
+
+      if (previewUrl) {
+        URL.revokeObjectURL(previewUrl);
+      }
+
+      setPreviewAttachment(attachment);
+      setPreviewUrl(objectUrl);
+    } catch (err: any) {
+      closePreview();
+      toast.error('Preview error', {
+        description: err.message || 'Unable to load the attachment preview.',
+      });
+    } finally {
+      setIsPreviewLoading(false);
+    }
   };
 
   const handleDownloadAttachment = async (attachment: Attachment) => {
-    const url = getAttachmentUrl(attachment);
-    if (!url) {
+    if (!attachment.id) {
       toast.error('Download unavailable');
       return;
     }
 
     try {
-      const response = await fetch(url);
-      if (!response.ok) {
-        throw new Error(`Download failed with status ${response.status}`);
-      }
-
-      const blob = await response.blob();
+      const blob = await api.downloadAttachment(requestId, attachment.id);
       const objectUrl = URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = objectUrl;
@@ -937,25 +952,33 @@ const PaymentRequestDetail: React.FC<PaymentRequestDetailProps> = ({ requestId, 
               </div>
               <button
                 type="button"
-                onClick={() => setPreviewAttachment(null)}
+                onClick={closePreview}
                 className="w-10 h-10 rounded-xl text-slate-500 hover:bg-slate-100 hover:text-slate-700 transition-colors flex items-center justify-center"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
             <div className="h-[calc(92vh-73px)] bg-slate-100">
-              {previewAttachment.contentType?.startsWith('image/') ? (
+              {isPreviewLoading ? (
+                <div className="h-full w-full flex items-center justify-center">
+                  <div className="w-8 h-8 border-2 border-slate-300 border-t-slate-700 rounded-full animate-spin" />
+                </div>
+              ) : previewUrl && previewAttachment.contentType?.startsWith('image/') ? (
                 <img
-                  src={getAttachmentUrl(previewAttachment)}
+                  src={previewUrl}
                   alt={previewAttachment.fileName}
                   className="h-full w-full object-contain"
                 />
-              ) : (
+              ) : previewUrl ? (
                 <iframe
                   title={previewAttachment.fileName}
-                  src={getAttachmentUrl(previewAttachment)}
+                  src={previewUrl}
                   className="h-full w-full"
                 />
+              ) : (
+                <div className="h-full w-full flex items-center justify-center text-sm text-slate-500">
+                  Preview unavailable
+                </div>
               )}
             </div>
           </div>

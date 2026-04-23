@@ -124,6 +124,10 @@ class ApiClient {
     });
   }
 
+  async downloadAttachment(requestId: string, attachmentId: string): Promise<Blob> {
+    return this.request<Blob>(`/PaymentRequests/${requestId}/attachments/${attachmentId}`);
+  }
+
   // Documents
   async downloadDocument(id: string): Promise<Blob> {
     return this.request<Blob>(`/PaymentRequests/${id}/document`);

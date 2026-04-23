@@ -15,6 +15,7 @@ public interface IPaymentService
     Task<ServiceResult> ApproveAsync(ApprovalDto dto, int approvedByUserId);
     Task<ServiceResult> ProcessFinanceAsync(int requestId, FinanceProcessRequestDto dto, int userId, string userRole);
     Task<ServiceResult<AttachmentResponseDto>> UploadAttachmentAsync(int requestId, IFormFile file, int currentUserId);
+    Task<ServiceResult<FileDownloadDto>> GetAttachmentAsync(int requestId, int attachmentId, int currentUserId, string currentUserRole);
     Task<ServiceResult<FileDownloadDto>> GeneratePdfAsync(int requestId, int currentUserId, string currentUserRole);
     Task<ServiceResult<FileDownloadDto>> GetArchivedPdfAsync(int requestId, int currentUserId, string currentUserRole);
     Task<ServiceResult<DocumentVerificationResponseDto>> VerifyDocumentAsync(string? documentNumber, string? verificationCode);
