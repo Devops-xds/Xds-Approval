@@ -136,7 +136,7 @@ public class AuthService : IAuthService
 
         if (string.IsNullOrWhiteSpace(request.Password) || request.Password.Trim().Length < 6)
         {
-            return ServiceResult<AuthResponseDto>.Fail(ServiceResultType.ValidationError, "Veuillez saisir 6 caractere ou plus");
+            return ServiceResult<AuthResponseDto>.Fail(ServiceResultType.ValidationError, "Please enter 6 characters or more.");
         }
 
         var normalizedRole = AllowedRoles

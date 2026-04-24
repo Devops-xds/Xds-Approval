@@ -18,7 +18,7 @@ namespace Xds.Approval.Api.DTOs.Auth
         public string Email { get; set; } = string.Empty;
 
         [Required]
-        [MinLength(6, ErrorMessage = "Veuillez saisir 6 caractere ou plus")]
+        [MinLength(6, ErrorMessage = "Please enter 6 characters or more.")]
         public string Password { get; set; } = string.Empty;
 
         [Required]

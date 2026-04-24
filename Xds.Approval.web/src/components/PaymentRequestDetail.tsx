@@ -144,11 +144,12 @@ const PaymentRequestDetail: React.FC<PaymentRequestDetailProps> = ({ requestId, 
   };
 
   const handleProcess = async () => {
+    const isFinancePreparation = role === 'Finance';
     const normalizedPhone = recipientTelephone.replace(/\D/g, '');
-    if (normalizedPhone.length !== 10) {
-      const message = 'Le numero du Ghana doit contenir exactement 10 chiffres. Merci de le corriger.';
+    if (isFinancePreparation && normalizedPhone.length !== 10) {
+      const message = 'The Ghana phone number must contain exactly 10 digits. Please update it and try again.';
       setFinanceFormError(message);
-      toast.error('Numero de telephone invalide', { description: message });
+      toast.error('Invalid phone number', { description: message });
       return;
     }
 
@@ -158,7 +159,7 @@ const PaymentRequestDetail: React.FC<PaymentRequestDetailProps> = ({ requestId, 
         companyName: companyName.trim() || undefined,
         recipientName: recipientName.trim() || undefined,
         recipientAddress: recipientAddress.trim() || undefined,
-        recipientTelephone: normalizedPhone || undefined,
+        recipientTelephone: isFinancePreparation ? normalizedPhone || undefined : undefined,
       });
       toast.success(role === 'HeadOfFinance' ? 'PV authorized' : 'PV prepared', {
         description: role === 'HeadOfFinance'

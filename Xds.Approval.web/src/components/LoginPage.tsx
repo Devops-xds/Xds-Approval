@@ -46,7 +46,7 @@ const LoginPage: React.FC = () => {
     }
 
     if (mode === 'register' && password.trim().length < 6) {
-      setError('Veuillez saisir 6 caractere ou plus');
+      setError('Please enter 6 characters or more.');
       return;
     }
 
@@ -329,7 +329,7 @@ const LoginPage: React.FC = () => {
                   value={password}
                   onChange={(e) => {
                     setPassword(e.target.value);
-                    if (error === 'Veuillez saisir 6 caractere ou plus' && e.target.value.trim().length >= 6) {
+                    if (error === 'Please enter 6 characters or more.' && e.target.value.trim().length >= 6) {
                       setError('');
                     }
                   }}
@@ -345,7 +345,7 @@ const LoginPage: React.FC = () => {
                 </button>
               </div>
               {mode === 'register' && password.trim().length > 0 && password.trim().length < 6 && (
-                <p className="mt-1.5 text-sm text-red-500">Veuillez saisir 6 caractere ou plus</p>
+                <p className="mt-1.5 text-sm text-red-500">Please enter 6 characters or more.</p>
               )}
             </div>
 

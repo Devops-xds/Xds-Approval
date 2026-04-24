@@ -201,7 +201,7 @@ public class PaymentService : IPaymentService
             {
                 return ServiceResult.Fail(
                     ServiceResultType.ValidationError,
-                    "Le numero de telephone du Ghana doit contenir exactement 10 chiffres. Merci de le corriger.");
+                    "The Ghana phone number must contain exactly 10 digits. Please update it and try again.");
             }
 
             var isNewFinancePreparation = finance is null;
