@@ -171,14 +171,9 @@ public class PaymentService : IPaymentService
 
         if (string.Equals(userRole, "Finance", StringComparison.OrdinalIgnoreCase))
         {
-            if (request.Status != "CEOApproved")
+            if (request.Status != "CEOApproved" && request.Status != "FinancePrepared" && request.Status != "FinanceAuthorized")
             {
-                return ServiceResult.Fail(ServiceResultType.Conflict, "Only CEO-approved payment requests can be prepared by Finance.");
-            }
-
-            if (finance is not null)
-            {
-                return ServiceResult.Fail(ServiceResultType.Conflict, "This payment request has already been prepared by Finance.");
+                return ServiceResult.Fail(ServiceResultType.Conflict, "Finance can only prepare or update PV data before the final CEO signature.");
             }
 
             if (string.IsNullOrWhiteSpace(dto.CompanyName))
@@ -201,23 +196,53 @@ public class PaymentService : IPaymentService
                 return ServiceResult.Fail(ServiceResultType.ValidationError, "Recipient telephone is required.");
             }
 
-            finance = new FinanceProcessing
+            var normalizedTelephone = NormalizeGhanaPhoneNumber(dto.RecipientTelephone);
+            if (normalizedTelephone is null)
+            {
+                return ServiceResult.Fail(
+                    ServiceResultType.ValidationError,
+                    "Le numero de telephone du Ghana doit contenir exactement 10 chiffres. Merci de le corriger.");
+            }
+
+            var isNewFinancePreparation = finance is null;
+
+            finance ??= new FinanceProcessing
             {
                 PaymentRequestId = requestId,
                 PreparedBy = userId,
                 PreparedAt = DateTime.UtcNow,
-                CompanyName = dto.CompanyName.Trim(),
-                RecipientName = dto.RecipientName.Trim(),
-                RecipientAddress = dto.RecipientAddress.Trim(),
-                RecipientTelephone = dto.RecipientTelephone.Trim(),
                 Status = "Prepared"
             };
 
-            request.Status = "FinancePrepared";
-            _context.FinanceProcessings.Add(finance);
+            finance.PreparedBy = finance.PreparedBy == 0 ? userId : finance.PreparedBy;
+            finance.PreparedAt = finance.PreparedAt == default ? DateTime.UtcNow : finance.PreparedAt;
+            finance.CompanyName = dto.CompanyName.Trim();
+            finance.RecipientName = dto.RecipientName.Trim();
+            finance.RecipientAddress = dto.RecipientAddress.Trim();
+            finance.RecipientTelephone = normalizedTelephone;
+
+            if (request.Status == "CEOApproved")
+            {
+                request.Status = "FinancePrepared";
+                finance.Status = "Prepared";
+            }
+            else if (request.Status == "FinancePrepared")
+            {
+                finance.Status = "Prepared";
+            }
+            else
+            {
+                finance.Status = "Authorized";
+            }
+
+            if (isNewFinancePreparation)
+            {
+                _context.FinanceProcessings.Add(finance);
+            }
+
             await _context.SaveChangesAsync();
-            await Log(userId, "Finance Prepared PV", request.Id);
-            return ServiceResult.Ok("PV prepared successfully.");
+            await Log(userId, isNewFinancePreparation ? "Finance Prepared PV" : "Finance Updated PV", request.Id);
+            return ServiceResult.Ok(isNewFinancePreparation ? "PV prepared successfully." : "PV updated successfully.");
         }
 
         if (string.Equals(userRole, "HeadOfFinance", StringComparison.OrdinalIgnoreCase))
@@ -347,6 +372,7 @@ public class PaymentService : IPaymentService
             FileName = safeFileName,
             ContentType = normalizedContentType,
             FilePath = $"/uploads/payment-requests/{requestId}/{generatedFileName}",
+            UploadedBy = currentUserId,
             UploadedAt = DateTime.UtcNow
         };
 
@@ -480,7 +506,11 @@ public class PaymentService : IPaymentService
         var logoBytes = LoadPdfLogo();
         var headFinanceSignature = LoadSignatureImage("HeadOfFinance");
         var ceoSignature = LoadSignatureImage("CEO");
-        var attachmentNames = request.Attachments?.OrderBy(attachment => attachment.UploadedAt).Select(attachment => attachment.FileName).ToList() ?? [];
+        var attachmentNames = request.Attachments?
+            .Where(attachment => attachment.UploadedBy == request.RequestedBy)
+            .OrderBy(attachment => attachment.UploadedAt)
+            .Select(attachment => attachment.FileName)
+            .ToList() ?? [];
 
         byte[] pdfBytes;
         try
@@ -569,12 +599,12 @@ public class PaymentService : IPaymentService
                             table.Cell().Element(DataCellStyle).Column(details =>
                             {
                                 details.Spacing(2);
-                                details.Item().Text(request.Description);
+                                details.Item().Text(request.Description).FontSize(11);
                             });
                             table.Cell().Element(DataCellStyle).AlignCenter().Text("-");
                             table.Cell().Element(DataCellStyle).AlignRight().Text($"{request.Amount:N2} {request.Currency}").Bold();
 
-                            table.Cell().ColumnSpan(3).Element(DataCellStyle).Text($"AMOUNT IN WORD: {ToAmountInWords(request.Amount, string.IsNullOrWhiteSpace(request.Currency) ? "GHS" : request.Currency)}".ToUpperInvariant()).Bold();
+                            table.Cell().ColumnSpan(3).Element(DataCellStyle).Text($"AMOUNT IN WORDS: {ToAmountInWords(request.Amount, string.IsNullOrWhiteSpace(request.Currency) ? "GHS" : request.Currency)}".ToUpperInvariant()).Bold();
                             table.Cell().Element(DataCellStyle).AlignRight().Text($"{request.Amount:N2}").Bold();
                         });
 
@@ -1501,6 +1531,17 @@ public class PaymentService : IPaymentService
     {
         return string.Concat(value.Select(character =>
             Path.GetInvalidFileNameChars().Contains(character) ? '-' : character));
+    }
+
+    private static string? NormalizeGhanaPhoneNumber(string? phoneNumber)
+    {
+        if (string.IsNullOrWhiteSpace(phoneNumber))
+        {
+            return null;
+        }
+
+        var normalizedDigits = new string(phoneNumber.Where(char.IsDigit).ToArray());
+        return normalizedDigits.Length == 10 ? normalizedDigits : null;
     }
 
     private static bool TryExtractRequestIdFromDocumentNumber(string documentNumber, out int requestId)

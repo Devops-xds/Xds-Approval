@@ -38,6 +38,7 @@ public class AppDbContext : DbContext
             entity.Property(attachment => attachment.FileName).HasMaxLength(255).IsRequired();
             entity.Property(attachment => attachment.ContentType).HasMaxLength(255).IsRequired();
             entity.Property(attachment => attachment.FilePath).HasMaxLength(500).IsRequired();
+            entity.Property(attachment => attachment.UploadedBy).IsRequired();
             entity.HasOne(attachment => attachment.PaymentRequest)
                 .WithMany(request => request.Attachments)
                 .HasForeignKey(attachment => attachment.PaymentRequestId);

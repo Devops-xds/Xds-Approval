@@ -12,11 +12,12 @@ export const formatCurrencyAmount = (amount: number, currency?: string | null): 
     return new Intl.NumberFormat('en-GB', {
       style: 'currency',
       currency: normalizedCurrency,
-      minimumFractionDigits: 0,
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
     }).format(amount);
   } catch {
     const formattedAmount = new Intl.NumberFormat('en-GB', {
-      minimumFractionDigits: 0,
+      minimumFractionDigits: 2,
       maximumFractionDigits: 2,
     }).format(amount);
 

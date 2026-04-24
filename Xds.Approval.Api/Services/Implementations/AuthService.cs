@@ -11,6 +11,20 @@ using Xds.Approval.Api.Models;
 public class AuthService : IAuthService
 {
     private static readonly string[] AllowedRoles = ["User", "CEO", "Finance", "HeadOfFinance"];
+    private static readonly string[] AllowedDepartments =
+    [
+        "CUSTOMER EXPERIENCE",
+        "LEGAL",
+        "GOVERNANCE",
+        "RISK AND COMPLIANCE",
+        "DATA SYSTEMS AND OPERATIONS",
+        "HUMAN RESOURCE AND ADMINISTRATION",
+        "TECHNOLOGY AND INNOVATIONS",
+        "SALES",
+        "MARKETING AND BUSINESS DEVELOPMENT",
+        "ANALYTICS AND PRODUCTS",
+        "FINANCE AND COMMERCIAL"
+    ];
     private readonly IConfiguration _configuration;
     private readonly AppDbContext _context;
     private readonly PasswordHasher<AuthUser> _passwordHasher;
@@ -98,6 +112,16 @@ public class AuthService : IAuthService
             return ServiceResult<AuthResponseDto>.Fail(ServiceResultType.ValidationError, "Department is required.");
         }
 
+        var allowedDepartment = AllowedDepartments
+            .FirstOrDefault(department => string.Equals(department, normalizedDepartment, StringComparison.OrdinalIgnoreCase));
+
+        if (allowedDepartment is null)
+        {
+            return ServiceResult<AuthResponseDto>.Fail(
+                ServiceResultType.ValidationError,
+                "Please select a valid department from the list.");
+        }
+
         var normalizedUsername = request.Username.Trim();
         if (string.IsNullOrWhiteSpace(normalizedUsername))
         {
@@ -108,6 +132,11 @@ public class AuthService : IAuthService
         if (string.IsNullOrWhiteSpace(normalizedEmail))
         {
             return ServiceResult<AuthResponseDto>.Fail(ServiceResultType.ValidationError, "Email is required.");
+        }
+
+        if (string.IsNullOrWhiteSpace(request.Password) || request.Password.Trim().Length < 6)
+        {
+            return ServiceResult<AuthResponseDto>.Fail(ServiceResultType.ValidationError, "Veuillez saisir 6 caractere ou plus");
         }
 
         var normalizedRole = AllowedRoles
@@ -139,7 +168,7 @@ public class AuthService : IAuthService
         var user = new AuthUser
         {
             FullName = normalizedFullName,
-            Department = normalizedDepartment,
+            Department = allowedDepartment,
             Username = normalizedUsername,
             Email = normalizedEmail,
             Role = normalizedRole

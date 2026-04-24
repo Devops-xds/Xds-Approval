@@ -80,6 +80,7 @@ const AuditLogView: React.FC<AuditLogViewProps> = ({ onViewRequest }) => {
     'CEO Rejected': <XCircle className="w-4 h-4" />,
     Rejected: <XCircle className="w-4 h-4" />,
     'Finance Prepared PV': <Banknote className="w-4 h-4" />,
+    'Finance Updated PV': <Banknote className="w-4 h-4" />,
     'Finance Manager Authorized PV': <Banknote className="w-4 h-4" />,
     'Upload Attachment': <Paperclip className="w-4 h-4" />,
     AttachmentUploaded: <Paperclip className="w-4 h-4" />,
@@ -93,6 +94,7 @@ const AuditLogView: React.FC<AuditLogViewProps> = ({ onViewRequest }) => {
     'CEO Rejected': 'bg-red-500',
     Rejected: 'bg-red-500',
     'Finance Prepared PV': 'bg-emerald-500',
+    'Finance Updated PV': 'bg-emerald-600',
     'Finance Manager Authorized PV': 'bg-green-500',
     'Upload Attachment': 'bg-emerald-500',
     AttachmentUploaded: 'bg-emerald-500',
@@ -106,13 +108,14 @@ const AuditLogView: React.FC<AuditLogViewProps> = ({ onViewRequest }) => {
     'CEO Rejected': 'CEO rejected',
     Rejected: 'Rejected',
     'Finance Prepared PV': 'Finance prepared PV',
+    'Finance Updated PV': 'Finance updated PV',
     'Finance Manager Authorized PV': 'Finance Manager authorized PV',
     'Upload Attachment': 'Attachment uploaded',
     AttachmentUploaded: 'Attachment uploaded',
     all: 'All',
   };
 
-  const actions = ['all', 'Created', 'CEO Approved Request', 'Finance Prepared PV', 'Finance Manager Authorized PV', 'CEO Signed PV', 'CEO Rejected', 'Upload Attachment'];
+  const actions = ['all', 'Created', 'CEO Approved Request', 'Finance Prepared PV', 'Finance Updated PV', 'Finance Manager Authorized PV', 'CEO Signed PV', 'CEO Rejected', 'Upload Attachment'];
   const themeClasses: Record<string, {
     title: string;
     input: string;

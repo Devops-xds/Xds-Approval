@@ -50,6 +50,7 @@ const PaymentRequestDetail: React.FC<PaymentRequestDetailProps> = ({ requestId, 
   const [recipientName, setRecipientName] = useState('');
   const [recipientAddress, setRecipientAddress] = useState('');
   const [recipientTelephone, setRecipientTelephone] = useState('');
+  const [financeFormError, setFinanceFormError] = useState('');
   const [previewAttachment, setPreviewAttachment] = useState<Attachment | null>(null);
   const [previewUrl, setPreviewUrl] = useState('');
   const [isPreviewLoading, setIsPreviewLoading] = useState(false);
@@ -65,6 +66,18 @@ const PaymentRequestDetail: React.FC<PaymentRequestDetailProps> = ({ requestId, 
       }
     };
   }, [previewUrl]);
+
+  useEffect(() => {
+    if (!showFinanceModal || !request) {
+      return;
+    }
+
+    setCompanyName(request.companyName || '');
+    setRecipientName(request.recipientName || '');
+    setRecipientAddress(request.recipientAddress || '');
+    setRecipientTelephone(request.recipientTelephone || '');
+    setFinanceFormError('');
+  }, [showFinanceModal, request]);
 
   const loadData = async () => {
     setIsLoading(true);
@@ -131,13 +144,21 @@ const PaymentRequestDetail: React.FC<PaymentRequestDetailProps> = ({ requestId, 
   };
 
   const handleProcess = async () => {
+    const normalizedPhone = recipientTelephone.replace(/\D/g, '');
+    if (normalizedPhone.length !== 10) {
+      const message = 'Le numero du Ghana doit contenir exactement 10 chiffres. Merci de le corriger.';
+      setFinanceFormError(message);
+      toast.error('Numero de telephone invalide', { description: message });
+      return;
+    }
+
     setIsProcessing(true);
     try {
       await api.processPayment(requestId, {
         companyName: companyName.trim() || undefined,
         recipientName: recipientName.trim() || undefined,
         recipientAddress: recipientAddress.trim() || undefined,
-        recipientTelephone: recipientTelephone.trim() || undefined,
+        recipientTelephone: normalizedPhone || undefined,
       });
       toast.success(role === 'HeadOfFinance' ? 'PV authorized' : 'PV prepared', {
         description: role === 'HeadOfFinance'
@@ -149,6 +170,7 @@ const PaymentRequestDetail: React.FC<PaymentRequestDetailProps> = ({ requestId, 
       setRecipientName('');
       setRecipientAddress('');
       setRecipientTelephone('');
+      setFinanceFormError('');
       loadData();
       onRefresh();
     } catch (err: any) {
@@ -291,6 +313,19 @@ const PaymentRequestDetail: React.FC<PaymentRequestDetailProps> = ({ requestId, 
     }
   };
 
+  const formatDateOnly = (dateStr: string) => {
+    try {
+      return format(new Date(dateStr), 'dd MMMM yyyy', { locale: enGB });
+    } catch {
+      return dateStr;
+    }
+  };
+
+  const openFinanceModal = () => {
+    setShowFinanceModal(true);
+    setFinanceFormError('');
+  };
+
   const actionColors: Record<string, string> = {
     Created: 'bg-slate-600',
     'CEO Approved Request': 'bg-emerald-500',
@@ -299,6 +334,7 @@ const PaymentRequestDetail: React.FC<PaymentRequestDetailProps> = ({ requestId, 
     'CEO Rejected': 'bg-red-500',
     Rejected: 'bg-red-500',
     'Finance Prepared PV': 'bg-emerald-500',
+    'Finance Updated PV': 'bg-emerald-600',
     'Finance Manager Authorized PV': 'bg-green-500',
     'Upload Attachment': 'bg-emerald-500',
     AttachmentUploaded: 'bg-emerald-500',
@@ -451,7 +487,7 @@ const PaymentRequestDetail: React.FC<PaymentRequestDetailProps> = ({ requestId, 
               </div>
               <div className={`${themeClasses[colorTheme].metricCard} rounded-xl border border-slate-200 p-4`}>
                 <p className="text-xs text-slate-500 font-medium uppercase tracking-wider">Deadline</p>
-                <p className="text-xl font-bold text-slate-900 dark:text-slate-100 mt-1">{request.deadline ? formatDate(request.deadline) : 'N/A'}</p>
+                <p className="text-xl font-bold text-slate-900 dark:text-slate-100 mt-1">{request.deadline ? formatDateOnly(request.deadline) : 'N/A'}</p>
               </div>
               <div className={`${themeClasses[colorTheme].metricCard} rounded-xl border border-slate-200 p-4`}>
                 <p className="text-xs text-slate-500 font-medium uppercase tracking-wider">Payment type</p>
@@ -461,7 +497,7 @@ const PaymentRequestDetail: React.FC<PaymentRequestDetailProps> = ({ requestId, 
 
             <div>
               <p className="text-xs text-slate-500 font-medium uppercase tracking-wider mb-2">Description</p>
-              <p className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed bg-slate-50 dark:bg-slate-950 rounded-xl p-4">
+              <p className="text-base text-slate-700 dark:text-slate-300 leading-relaxed bg-slate-50 dark:bg-slate-950 rounded-xl p-5">
                 {request.description}
               </p>
             </div>
@@ -731,11 +767,11 @@ const PaymentRequestDetail: React.FC<PaymentRequestDetailProps> = ({ requestId, 
           )}
 
           {/* Finance Actions */}
-          {role === 'Finance' && request.status === 'CEOApproved' && (
+          {role === 'Finance' && ['CEOApproved', 'FinancePrepared', 'FinanceAuthorized'].includes(request.status) && (
             <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 p-5 space-y-3">
               <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100 uppercase tracking-wider">Finance actions</h3>
               <button
-                onClick={() => setShowFinanceModal(true)}
+                onClick={openFinanceModal}
                 disabled={isProcessing}
                 className={`w-full py-2.5 text-white font-semibold rounded-xl transition-colors flex items-center justify-center gap-2 ${themeClasses[colorTheme].process}`}
               >
@@ -744,7 +780,7 @@ const PaymentRequestDetail: React.FC<PaymentRequestDetailProps> = ({ requestId, 
                 ) : (
                   <>
                     <Banknote className="w-4 h-4" />
-                    Prepare PV
+                    {request.status === 'CEOApproved' ? 'Prepare PV' : 'Modify PV'}
                   </>
                 )}
               </button>
@@ -792,7 +828,7 @@ const PaymentRequestDetail: React.FC<PaymentRequestDetailProps> = ({ requestId, 
 
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-2">
-                Comment (optional)
+                Comment
               </label>
               <textarea
                 value={comment}
@@ -880,7 +916,7 @@ const PaymentRequestDetail: React.FC<PaymentRequestDetailProps> = ({ requestId, 
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl max-w-md w-full p-6 space-y-4">
             <div>
-              <h3 className="text-lg font-semibold text-slate-900">Prepare PV</h3>
+              <h3 className="text-lg font-semibold text-slate-900">{request?.status === 'CEOApproved' ? 'Prepare PV' : 'Modify PV'}</h3>
               <p className="text-sm text-slate-500">Enter the recipient details that will appear on the PV.</p>
             </div>
             <div>
@@ -918,14 +954,25 @@ const PaymentRequestDetail: React.FC<PaymentRequestDetailProps> = ({ requestId, 
               <input
                 type="text"
                 value={recipientTelephone}
-                onChange={(e) => setRecipientTelephone(e.target.value)}
-                placeholder="Enter recipient telephone"
+                onChange={(e) => {
+                  setRecipientTelephone(e.target.value.replace(/\D/g, '').slice(0, 10));
+                  if (financeFormError) {
+                    setFinanceFormError('');
+                  }
+                }}
+                placeholder="Enter 10-digit Ghana telephone"
+                maxLength={10}
                 className={`w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 ${themeClasses[colorTheme].approveInput}`}
               />
             </div>
+            {financeFormError && (
+              <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+                {financeFormError}
+              </div>
+            )}
             <div className="flex justify-end gap-3">
               <button
-                onClick={() => { setShowFinanceModal(false); setCompanyName(''); setRecipientName(''); setRecipientAddress(''); setRecipientTelephone(''); }}
+                onClick={() => { setShowFinanceModal(false); setCompanyName(''); setRecipientName(''); setRecipientAddress(''); setRecipientTelephone(''); setFinanceFormError(''); }}
                 className="px-4 py-2 text-slate-600 font-medium rounded-xl hover:bg-slate-100 transition-colors"
               >
                 Cancel

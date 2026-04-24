@@ -3,6 +3,20 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/components/theme-provider';
 import { Lock, User, Eye, EyeOff, ArrowRight, IdCard, Mail, BriefcaseBusiness, Moon, Sun } from 'lucide-react';
 
+const departments = [
+  'CUSTOMER EXPERIENCE',
+  'LEGAL',
+  'GOVERNANCE',
+  'RISK AND COMPLIANCE',
+  'DATA SYSTEMS AND OPERATIONS',
+  'HUMAN RESOURCE AND ADMINISTRATION',
+  'TECHNOLOGY AND INNOVATIONS',
+  'SALES',
+  'MARKETING AND BUSINESS DEVELOPMENT',
+  'ANALYTICS AND PRODUCTS',
+  'FINANCE AND COMMERCIAL',
+] as const;
+
 const LoginPage: React.FC = () => {
   const { login, register } = useAuth();
   const { theme, setTheme } = useTheme();
@@ -28,6 +42,11 @@ const LoginPage: React.FC = () => {
       (mode === 'register' && (!fullName.trim() || !department.trim() || !email.trim()))
     ) {
       setError('Please fill in all fields.');
+      return;
+    }
+
+    if (mode === 'register' && password.trim().length < 6) {
+      setError('Veuillez saisir 6 caractere ou plus');
       return;
     }
 
@@ -264,13 +283,18 @@ const LoginPage: React.FC = () => {
                   <label className="mb-2 block text-sm font-medium text-slate-700 dark:text-slate-300">Department</label>
                   <div className="relative">
                     <BriefcaseBusiness className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" />
-                    <input
-                      type="text"
+                    <select
                       value={department}
                       onChange={(e) => setDepartment(e.target.value)}
-                      placeholder="Enter your department"
                       className={inputClassName}
-                    />
+                    >
+                      <option value="">Select your department</option>
+                      {departments.map((item) => (
+                        <option key={item} value={item}>
+                          {item}
+                        </option>
+                      ))}
+                    </select>
                   </div>
                 </div>
               </>
@@ -303,7 +327,12 @@ const LoginPage: React.FC = () => {
                 <input
                   type={showPassword ? 'text' : 'password'}
                   value={password}
-                  onChange={(e) => setPassword(e.target.value)}
+                  onChange={(e) => {
+                    setPassword(e.target.value);
+                    if (error === 'Veuillez saisir 6 caractere ou plus' && e.target.value.trim().length >= 6) {
+                      setError('');
+                    }
+                  }}
                   placeholder="Enter your password"
                   className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 py-3.5 pl-12 pr-12 text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 transition-all focus:border-emerald-600 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
                 />
@@ -315,6 +344,9 @@ const LoginPage: React.FC = () => {
                   {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
                 </button>
               </div>
+              {mode === 'register' && password.trim().length > 0 && password.trim().length < 6 && (
+                <p className="mt-1.5 text-sm text-red-500">Veuillez saisir 6 caractere ou plus</p>
+              )}
             </div>
 
             <button

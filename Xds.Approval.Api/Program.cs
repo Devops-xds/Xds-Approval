@@ -429,6 +429,24 @@ static async Task RepairDatabaseSchemaAsync(AppDbContext dbContext, ILogger logg
                 ALTER TABLE [FinanceProcessings] ADD [RecipientTelephone] nvarchar(50) NULL;
             END;
         END;
+
+        IF OBJECT_ID(N'[Attachments]', N'U') IS NOT NULL
+        BEGIN
+            IF COL_LENGTH('Attachments', 'UploadedBy') IS NULL
+            BEGIN
+                ALTER TABLE [Attachments]
+                ADD [UploadedBy] int NOT NULL
+                CONSTRAINT [DF_Attachments_UploadedBy_RuntimeRepair] DEFAULT (0);
+            END;
+
+            EXEC(N'
+                UPDATE attachment
+                SET [UploadedBy] = request.[RequestedBy]
+                FROM [Attachments] attachment
+                INNER JOIN [PaymentRequests] request ON request.[Id] = attachment.[PaymentRequestId]
+                WHERE attachment.[UploadedBy] IS NULL OR attachment.[UploadedBy] = 0;
+            ');
+        END;
         """);
 
     logger.LogInformation("Database schema drift check completed.");
