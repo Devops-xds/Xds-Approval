@@ -8,6 +8,7 @@ import StatusBadge from './StatusBadge';
 import {
   ArrowLeft,
   FileText,
+  Download,
   CheckCircle2,
   XCircle,
   Banknote,
