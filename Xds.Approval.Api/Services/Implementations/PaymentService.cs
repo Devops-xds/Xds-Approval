@@ -1,6 +1,8 @@
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
+using PdfSharpCore.Pdf;
+using PdfSharpCore.Pdf.IO;
 using QuestPDF.Fluent;
 using QuestPDF.Helpers;
 using QuestPDF.Infrastructure;
@@ -602,20 +604,25 @@ public class PaymentService : IPaymentService
                             var vatAmount = Math.Round(request.Amount * taxProfile.VatRate, 2, MidpointRounding.AwayFromZero);
                             var whtAmount = Math.Round(request.Amount * taxProfile.WhtRate, 2, MidpointRounding.AwayFromZero);
                             var totalAmountIncludingTaxes = request.Amount + vatAmount + whtAmount;
+                            var taxRows = BuildPdfTaxRows(request.Amount, taxProfile, vatAmount);
 
                             table.Cell().Element(DataCellStyle).Column(tax =>
                             {
                                 tax.Spacing(2);
                                 tax.Item().Text(" ");
-                                tax.Item().Text($"VAT {taxProfile.VatRate * 100:0}%");
-                                tax.Item().Text($"WHT {taxProfile.WhtRate * 100:0}%");
+                                foreach (var taxRow in taxRows)
+                                {
+                                    tax.Item().Text(taxRow.Label);
+                                }
                             });
                             table.Cell().Element(DataCellStyle).Column(amountColumn =>
                             {
                                 amountColumn.Spacing(2);
                                 amountColumn.Item().AlignRight().Text(FormatPdfAmount(request.Amount, request.Currency)).Bold();
-                                amountColumn.Item().AlignRight().Text(FormatPdfAmount(vatAmount, request.Currency));
-                                amountColumn.Item().AlignRight().Text(FormatPdfAmount(whtAmount, request.Currency));
+                                foreach (var taxRow in taxRows)
+                                {
+                                    amountColumn.Item().AlignRight().Text(FormatPdfAmount(taxRow.Amount, request.Currency));
+                                }
                             });
 
                             table.Cell().ColumnSpan(3).Element(DataCellStyle).Text($"AMOUNT IN WORDS: {ToAmountInWords(totalAmountIncludingTaxes, string.IsNullOrWhiteSpace(request.Currency) ? "GHS" : request.Currency)}".ToUpperInvariant()).Bold();
@@ -750,8 +757,51 @@ public class PaymentService : IPaymentService
             return regeneratedPdfResult;
         }
 
+        var documentNumber = BuildDocumentNumber(request);
+        var attachmentFiles = request.Attachments?
+            .OrderBy(attachment => attachment.UploadedAt)
+            .ToList() ?? [];
+
+        var pdfParts = new List<byte[]>
+        {
+            regeneratedPdfResult.Data!.Content
+        };
+
+        foreach (var attachment in attachmentFiles)
+        {
+            var attachmentPath = ResolveAttachmentPath(attachment);
+            if (string.IsNullOrWhiteSpace(attachmentPath) || !File.Exists(attachmentPath))
+            {
+                _logger.LogWarning(
+                    "Skipping missing attachment {AttachmentId} while building the final merged PDF for request {RequestId}.",
+                    attachment.Id,
+                    requestId);
+                continue;
+            }
+
+            try
+            {
+                pdfParts.Add(await File.ReadAllBytesAsync(attachmentPath));
+            }
+            catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+            {
+                _logger.LogWarning(
+                    exception,
+                    "Skipping unreadable attachment {AttachmentId} while building the final merged PDF for request {RequestId}.",
+                    attachment.Id,
+                    requestId);
+            }
+        }
+
+        var mergedPdfBytes = MergePdfDocuments(pdfParts);
+
         return ServiceResult<FileDownloadDto>.Ok(
-            regeneratedPdfResult.Data!,
+            new FileDownloadDto
+            {
+                Content = mergedPdfBytes,
+                ContentType = "application/pdf",
+                FileName = $"{SanitizeFileName(documentNumber)}-full.pdf"
+            },
             "Final PV document generated successfully.");
     }
 
@@ -1180,6 +1230,20 @@ public class PaymentService : IPaymentService
         return (0.15m, whtRate);
     }
 
+    private static List<(string Label, decimal Amount)> BuildPdfTaxRows(decimal baseAmount, (decimal VatRate, decimal WhtRate) taxProfile, decimal vatAmount)
+    {
+        var rows = new List<(string Label, decimal Amount)>
+        {
+            ($"VAT {taxProfile.VatRate * 100:0}%", vatAmount),
+            ("WHT Goods 3%", taxProfile.WhtRate == 0.03m ? Math.Round(baseAmount * 0.03m, 2, MidpointRounding.AwayFromZero) : 0m),
+            ("WHT Service 5%", taxProfile.WhtRate == 0.05m ? Math.Round(baseAmount * 0.05m, 2, MidpointRounding.AwayFromZero) : 0m),
+            ("WHT Residence 10%", taxProfile.WhtRate == 0.10m ? Math.Round(baseAmount * 0.10m, 2, MidpointRounding.AwayFromZero) : 0m),
+            ("WHT Crossboarder 20%", taxProfile.WhtRate == 0.20m ? Math.Round(baseAmount * 0.20m, 2, MidpointRounding.AwayFromZero) : 0m)
+        };
+
+        return rows;
+    }
+
     private static string FormatPdfAmount(decimal amount, string? currency)
     {
         var normalizedCurrency = string.IsNullOrWhiteSpace(currency) ? "GHS" : currency.Trim().ToUpperInvariant();
@@ -1187,6 +1251,26 @@ public class PaymentService : IPaymentService
         return normalizedCurrency == "GHS"
             ? $"{amount:N2} \u20B5"
             : $"{amount:N2} {normalizedCurrency}";
+    }
+
+    private static byte[] MergePdfDocuments(IEnumerable<byte[]> pdfParts)
+    {
+        using var outputDocument = new PdfDocument();
+
+        foreach (var pdfPart in pdfParts.Where(part => part.Length > 0))
+        {
+            using var inputStream = new MemoryStream(pdfPart);
+            using var inputDocument = PdfReader.Open(inputStream, PdfDocumentOpenMode.Import);
+
+            for (var pageIndex = 0; pageIndex < inputDocument.PageCount; pageIndex++)
+            {
+                outputDocument.AddPage(inputDocument.Pages[pageIndex]);
+            }
+        }
+
+        using var outputStream = new MemoryStream();
+        outputDocument.Save(outputStream, false);
+        return outputStream.ToArray();
     }
 
     private static bool IsMimeTypeValidForExtension(string extension, string contentType)

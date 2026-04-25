@@ -24,7 +24,6 @@ import {
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { enGB } from 'date-fns/locale';
-import { PDFDocument } from 'pdf-lib';
 import { toast } from 'sonner';
 
 interface PaymentRequestDetailProps {
@@ -186,7 +185,7 @@ const PaymentRequestDetail: React.FC<PaymentRequestDetailProps> = ({ requestId, 
     try {
       const isFinalPackage = request?.status === 'Approved';
       const blob = isFinalPackage
-        ? await buildCombinedPdf()
+        ? await api.downloadArchive(requestId)
         : await api.downloadDocument(requestId);
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -201,35 +200,6 @@ const PaymentRequestDetail: React.FC<PaymentRequestDetailProps> = ({ requestId, 
     } catch (err: any) {
       toast.error('Download error', { description: err.message });
     }
-  };
-
-  const buildCombinedPdf = async () => {
-    const mergedPdf = await PDFDocument.create();
-    const mainDocument = await api.downloadDocument(requestId);
-    const mainPages = await PDFDocument.load(await mainDocument.arrayBuffer());
-
-    const copiedMainPages = await mergedPdf.copyPages(mainPages, mainPages.getPageIndices());
-    for (const page of copiedMainPages) {
-      mergedPdf.addPage(page);
-    }
-
-    const attachments = request?.attachments ?? [];
-    for (const attachment of attachments) {
-      if (!attachment.id) {
-        continue;
-      }
-
-      const blob = await api.downloadAttachment(requestId, attachment.id);
-      const attachmentPdf = await PDFDocument.load(await blob.arrayBuffer());
-      const copiedAttachmentPages = await mergedPdf.copyPages(attachmentPdf, attachmentPdf.getPageIndices());
-
-      for (const page of copiedAttachmentPages) {
-        mergedPdf.addPage(page);
-      }
-    }
-
-    const mergedBytes = await mergedPdf.save();
-    return new Blob([mergedBytes], { type: 'application/pdf' });
   };
 
   const handleUploadAttachment = async (e: React.ChangeEvent<HTMLInputElement>) => {
