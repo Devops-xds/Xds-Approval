@@ -1,7 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { useAppContext } from '@/contexts/AppContext';
 import { api, CreatePaymentRequest } from '@/lib/api';
-import { getCurrencySymbol, PaymentType } from '@/lib/payment';
+import { getCurrencySymbol, getPaymentTypeOptions, getTaxBreakdown, PaymentType } from '@/lib/payment';
 import {
   FileText,
   Upload,
@@ -34,7 +34,11 @@ const PaymentRequestForm: React.FC<PaymentRequestFormProps> = ({ onSuccess, onCa
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const currencies = ['GHS', 'USD', 'EUR', 'GBP'];
-  const paymentTypes: PaymentType[] = ['One-off', 'Recurring'];
+  const paymentTypes = getPaymentTypeOptions();
+  const numericAmount = Number.parseFloat(amount);
+  const taxBreakdown = Number.isFinite(numericAmount) && numericAmount > 0
+    ? getTaxBreakdown(numericAmount, paymentType)
+    : null;
 
   const validate = () => {
     const newErrors: Record<string, string> = {};
@@ -42,7 +46,7 @@ const PaymentRequestForm: React.FC<PaymentRequestFormProps> = ({ onSuccess, onCa
     if (!description.trim()) newErrors.description = 'Description is required';
     if (!amount || parseFloat(amount) <= 0) newErrors.amount = 'Amount must be greater than 0';
     if (!deadline) newErrors.deadline = 'Deadline is required';
-    if (!paymentType) newErrors.paymentType = 'Payment type is required';
+    if (!paymentType) newErrors.paymentType = 'Tax category is required';
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -264,7 +268,7 @@ const PaymentRequestForm: React.FC<PaymentRequestFormProps> = ({ onSuccess, onCa
 
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-2">
-                Payment type
+                Tax category
               </label>
               <div className="relative">
                 <Repeat className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 pointer-events-none" />
@@ -283,6 +287,17 @@ const PaymentRequestForm: React.FC<PaymentRequestFormProps> = ({ onSuccess, onCa
               {errors.paymentType && <p className="text-red-500 text-sm mt-1.5">{errors.paymentType}</p>}
             </div>
           </div>
+
+          {taxBreakdown && (
+            <div className="rounded-xl border border-emerald-100 bg-emerald-50/70 p-4">
+              <p className="text-sm font-semibold text-emerald-900">Tax preview</p>
+              <div className="mt-2 grid grid-cols-1 gap-2 text-sm text-emerald-800 sm:grid-cols-3">
+                <p>VAT ({(taxBreakdown.vatRate * 100).toFixed(0)}%): {currency} {taxBreakdown.vatAmount.toFixed(2)}</p>
+                <p>WHT ({(taxBreakdown.whtRate * 100).toFixed(0)}%): {currency} {taxBreakdown.whtAmount.toFixed(2)}</p>
+                <p>Total tax: {currency} {taxBreakdown.totalTaxAmount.toFixed(2)}</p>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* File Upload */}

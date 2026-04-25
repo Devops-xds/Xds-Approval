@@ -603,7 +603,16 @@ public class PaymentService : IPaymentService
                                 details.Spacing(2);
                                 details.Item().Text(request.Description).FontSize(11);
                             });
-                            table.Cell().Element(DataCellStyle).AlignCenter().Text("-");
+                            var taxProfile = GetTaxProfile(request.PaymentType);
+                            var vatAmount = Math.Round(request.Amount * taxProfile.VatRate, 2, MidpointRounding.AwayFromZero);
+                            var whtAmount = Math.Round(request.Amount * taxProfile.WhtRate, 2, MidpointRounding.AwayFromZero);
+
+                            table.Cell().Element(DataCellStyle).Column(tax =>
+                            {
+                                tax.Spacing(2);
+                                tax.Item().Text($"VAT {taxProfile.VatRate * 100:0}%: {vatAmount:N2}");
+                                tax.Item().Text($"WHT {taxProfile.WhtRate * 100:0}%: {whtAmount:N2}");
+                            });
                             table.Cell().Element(DataCellStyle).AlignRight().Text($"{request.Amount:N2} {request.Currency}").Bold();
 
                             table.Cell().ColumnSpan(3).Element(DataCellStyle).Text($"AMOUNT IN WORDS: {ToAmountInWords(request.Amount, string.IsNullOrWhiteSpace(request.Currency) ? "GHS" : request.Currency)}".ToUpperInvariant()).Bold();
@@ -1109,11 +1118,17 @@ public class PaymentService : IPaymentService
     {
         if (string.IsNullOrWhiteSpace(paymentType))
         {
-            return "One-off";
+            return "Goods";
         }
 
         return paymentType.Trim().ToLowerInvariant() switch
         {
+            "goods" => "Goods",
+            "service" => "Service",
+            "residence" => "Residence",
+            "crossboarder" => "Crossboarder",
+            "crossborder" => "Crossboarder",
+            "cross border" => "Crossboarder",
             "one-off" => "One-off",
             "one off" => "One-off",
             "once off" => "One-off",
@@ -1192,6 +1207,21 @@ public class PaymentService : IPaymentService
         return candidatePaths
             .Where(path => !string.IsNullOrWhiteSpace(path))
             .FirstOrDefault();
+    }
+
+    private static (decimal VatRate, decimal WhtRate) GetTaxProfile(string? paymentType)
+    {
+        var normalizedPaymentType = NormalizePaymentType(paymentType);
+        var whtRate = normalizedPaymentType switch
+        {
+            "Goods" => 0.03m,
+            "Service" => 0.05m,
+            "Residence" => 0.10m,
+            "Crossboarder" => 0.20m,
+            _ => 0m
+        };
+
+        return (0.15m, whtRate);
     }
 
     private static bool IsMimeTypeValidForExtension(string extension, string contentType)

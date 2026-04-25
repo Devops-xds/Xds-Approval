@@ -3,7 +3,7 @@ import { api, PaymentRequest, AuditLog, Attachment } from '@/lib/api';
 import { formatCurrencyAmount } from '@/lib/currency';
 import { useAuth } from '@/contexts/AuthContext';
 import { useAppContext } from '@/contexts/AppContext';
-import { getPaymentTypeLabel } from '@/lib/payment';
+import { getPaymentTypeLabel, getTaxBreakdown } from '@/lib/payment';
 import StatusBadge from './StatusBadge';
 import {
   ArrowLeft,
@@ -289,6 +289,7 @@ const PaymentRequestDetail: React.FC<PaymentRequestDetailProps> = ({ requestId, 
   const formatCurrency = (amount: number) => {
     return formatCurrencyAmount(amount, request?.currency);
   };
+  const taxBreakdown = request ? getTaxBreakdown(request.amount, request.paymentType) : null;
 
   const formatDate = (dateStr: string) => {
     try {
@@ -467,10 +468,33 @@ const PaymentRequestDetail: React.FC<PaymentRequestDetailProps> = ({ requestId, 
                 <p className="text-xl font-bold text-slate-900 dark:text-slate-100 mt-1">{request.deadline ? formatDateOnly(request.deadline) : 'N/A'}</p>
               </div>
               <div className={`${themeClasses[colorTheme].metricCard} rounded-xl border border-slate-200 p-4`}>
-                <p className="text-xs text-slate-500 font-medium uppercase tracking-wider">Payment type</p>
+                <p className="text-xs text-slate-500 font-medium uppercase tracking-wider">Tax category</p>
                 <p className="text-xl font-bold text-slate-900 dark:text-slate-100 mt-1">{getPaymentTypeLabel(request.paymentType)}</p>
               </div>
             </div>
+
+            {taxBreakdown && (
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+                <div className={`${themeClasses[colorTheme].metricCard} rounded-xl border border-slate-200 p-4`}>
+                  <p className="text-xs text-slate-500 font-medium uppercase tracking-wider">VAT</p>
+                  <p className="text-lg font-bold text-slate-900 dark:text-slate-100 mt-1">
+                    {(taxBreakdown.vatRate * 100).toFixed(0)}% · {formatCurrency(taxBreakdown.vatAmount)}
+                  </p>
+                </div>
+                <div className={`${themeClasses[colorTheme].metricCard} rounded-xl border border-slate-200 p-4`}>
+                  <p className="text-xs text-slate-500 font-medium uppercase tracking-wider">WHT</p>
+                  <p className="text-lg font-bold text-slate-900 dark:text-slate-100 mt-1">
+                    {(taxBreakdown.whtRate * 100).toFixed(0)}% · {formatCurrency(taxBreakdown.whtAmount)}
+                  </p>
+                </div>
+                <div className={`${themeClasses[colorTheme].metricCard} rounded-xl border border-slate-200 p-4`}>
+                  <p className="text-xs text-slate-500 font-medium uppercase tracking-wider">Total tax</p>
+                  <p className="text-lg font-bold text-slate-900 dark:text-slate-100 mt-1">
+                    {formatCurrency(taxBreakdown.totalTaxAmount)}
+                  </p>
+                </div>
+              </div>
+            )}
 
             <div>
               <p className="text-xs text-slate-500 font-medium uppercase tracking-wider mb-2">Description</p>
