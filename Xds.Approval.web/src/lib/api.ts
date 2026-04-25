@@ -60,7 +60,11 @@ class ApiClient {
     if (contentType?.includes('application/json')) {
       return response.json();
     }
-    if (contentType?.includes('application/pdf') || contentType?.includes('application/octet-stream')) {
+    if (
+      contentType?.includes('application/pdf') ||
+      contentType?.includes('application/octet-stream') ||
+      contentType?.includes('application/zip')
+    ) {
       return response.blob() as any;
     }
     return response.text() as any;
