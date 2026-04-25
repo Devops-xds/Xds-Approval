@@ -9,7 +9,6 @@ import {
   ArrowLeft,
   FileText,
   Download,
-  Archive,
   CheckCircle2,
   XCircle,
   Banknote,
@@ -183,29 +182,14 @@ const PaymentRequestDetail: React.FC<PaymentRequestDetailProps> = ({ requestId, 
 
   const handleDownloadPDF = async () => {
     try {
-      const blob = await api.downloadDocument(requestId);
+      const isFinalPackage = request?.status === 'Approved';
+      const blob = isFinalPackage
+        ? await api.downloadArchive(requestId)
+        : await api.downloadDocument(requestId);
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `request-${requestId}.pdf`;
-      document.body.appendChild(a);
-      a.click();
-      window.setTimeout(() => {
-        URL.revokeObjectURL(url);
-        a.remove();
-      }, 1000);
-    } catch (err: any) {
-      toast.error('Download error', { description: err.message });
-    }
-  };
-
-  const handleDownloadArchive = async () => {
-    try {
-      const blob = await api.downloadArchive(requestId);
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `archive-${requestId}.pdf`;
+      a.download = isFinalPackage ? `request-${requestId}-package.zip` : `request-${requestId}.pdf`;
       document.body.appendChild(a);
       a.click();
       window.setTimeout(() => {
@@ -457,15 +441,7 @@ const PaymentRequestDetail: React.FC<PaymentRequestDetailProps> = ({ requestId, 
             className="w-full lg:w-auto px-4 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors flex items-center justify-center gap-2 disabled:cursor-not-allowed disabled:opacity-50"
           >
             <Download className="w-4 h-4" />
-            Download PV
-          </button>
-          <button
-            onClick={handleDownloadArchive}
-            disabled={request.status !== 'Approved'}
-            className="w-full lg:w-auto px-4 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors flex items-center justify-center gap-2 disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            <Archive className="w-4 h-4" />
-            Archive
+            {request.status === 'Approved' ? 'Download PV Package' : 'Download PV'}
           </button>
         </div>
       </div>

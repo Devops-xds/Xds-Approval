@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using QuestPDF.Fluent;
 using QuestPDF.Helpers;
 using QuestPDF.Infrastructure;
+using System.IO.Compression;
 using System.Security.Cryptography;
 using System.Text;
 using Xds.Approval.Api.DTOs.Audit;
@@ -488,8 +489,9 @@ public class PaymentService : IPaymentService
         var hasFinanceAuthorization = request.Status is "FinanceAuthorized" or "Approved"
             || financeProcessing?.AuthorizedAt is not null
             || financeProcessing?.AuthorizedBy is not null;
+        var hasFinalCeoSignature = request.Status == "Approved" || finalApproval is not null;
         var reviewedBy = hasFinanceAuthorization ? financeManagerName : "-";
-        var approvedBy = hasFinanceAuthorization ? headOfFinanceName : "-";
+        var approvedBy = hasFinalCeoSignature ? headOfFinanceName : "-";
         var ceoApprovedBy = finalApproval is null ? "-" : ToDisplayName(usersById.GetValueOrDefault(finalApproval.ApprovedBy, $"User {finalApproval.ApprovedBy}"));
         var companyName = string.IsNullOrWhiteSpace(financeProcessing?.CompanyName) ? request.Title : financeProcessing.CompanyName;
         var recipientName = string.IsNullOrWhiteSpace(financeProcessing?.RecipientName) ? "-" : financeProcessing.RecipientName;
@@ -505,7 +507,7 @@ public class PaymentService : IPaymentService
         var companyLicense = _configuration["PdfTemplate:CompanyLicense"] ?? "Credit Bureau License: 001";
         var logoBytes = LoadPdfLogo();
         var headFinanceSignature = hasFinanceAuthorization ? LoadSignatureImage("HeadOfFinance") : null;
-        var ceoSignature = hasFinanceAuthorization ? LoadSignatureImage("CEO") : null;
+        var ceoSignature = hasFinalCeoSignature ? LoadSignatureImage("CEO") : null;
         var attachmentNames = request.Attachments?
             .Where(attachment => attachment.UploadedBy == request.RequestedBy)
             .OrderBy(attachment => attachment.UploadedAt)
@@ -716,15 +718,76 @@ public class PaymentService : IPaymentService
 
     public async Task<ServiceResult<FileDownloadDto>> GetArchivedPdfAsync(int requestId, int currentUserId, string currentUserRole)
     {
+        var accessibleRequestResult = await GetAccessibleProcessedRequestAsync(requestId, currentUserId, currentUserRole);
+        if (!accessibleRequestResult.Success)
+        {
+            return ServiceResult<FileDownloadDto>.Fail(accessibleRequestResult.ResultType, accessibleRequestResult.Message);
+        }
+
+        var request = accessibleRequestResult.Data!;
+        if (request.Status != "Approved")
+        {
+            return ServiceResult<FileDownloadDto>.Fail(
+                ServiceResultType.Conflict,
+                "The final PV package is available after both the Finance Manager and the CEO have signed.");
+        }
+
         var regeneratedPdfResult = await GeneratePdfAsync(requestId, currentUserId, currentUserRole);
         if (!regeneratedPdfResult.Success)
         {
             return regeneratedPdfResult;
         }
 
+        var documentNumber = BuildDocumentNumber(request);
+        var attachmentFiles = request.Attachments?
+            .OrderBy(attachment => attachment.UploadedAt)
+            .ToList() ?? [];
+
+        await using var archiveStream = new MemoryStream();
+        using (var archive = new ZipArchive(archiveStream, ZipArchiveMode.Create, leaveOpen: true))
+        {
+            var pdfEntry = archive.CreateEntry($"{SanitizeFileName(documentNumber)}.pdf", CompressionLevel.Fastest);
+            await using (var entryStream = pdfEntry.Open())
+            {
+                await entryStream.WriteAsync(regeneratedPdfResult.Data!.Content);
+            }
+
+            var usedEntryNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+            {
+                $"{SanitizeFileName(documentNumber)}.pdf"
+            };
+
+            foreach (var attachment in attachmentFiles)
+            {
+                var attachmentPath = ResolveAttachmentPath(attachment);
+                if (string.IsNullOrWhiteSpace(attachmentPath) || !File.Exists(attachmentPath))
+                {
+                    _logger.LogWarning(
+                        "Skipping missing attachment {AttachmentId} while building final package for request {RequestId}.",
+                        attachment.Id,
+                        requestId);
+                    continue;
+                }
+
+                var safeAttachmentName = GetUniqueArchiveEntryName(
+                    usedEntryNames,
+                    $"attachments/{SanitizeFileName(string.IsNullOrWhiteSpace(attachment.FileName) ? Path.GetFileName(attachmentPath) : attachment.FileName)}");
+
+                var attachmentEntry = archive.CreateEntry(safeAttachmentName, CompressionLevel.Fastest);
+                await using var attachmentEntryStream = attachmentEntry.Open();
+                await using var fileStream = File.OpenRead(attachmentPath);
+                await fileStream.CopyToAsync(attachmentEntryStream);
+            }
+        }
+
         return ServiceResult<FileDownloadDto>.Ok(
-            regeneratedPdfResult.Data!,
-            "Archived PDF refreshed successfully.");
+            new FileDownloadDto
+            {
+                Content = archiveStream.ToArray(),
+                ContentType = "application/zip",
+                FileName = $"{SanitizeFileName(documentNumber)}-package.zip"
+            },
+            "Final PV package generated successfully.");
     }
 
     public async Task<ServiceResult<DocumentVerificationResponseDto>> VerifyDocumentAsync(string? documentNumber, string? verificationCode)
@@ -1531,6 +1594,24 @@ public class PaymentService : IPaymentService
     {
         return string.Concat(value.Select(character =>
             Path.GetInvalidFileNameChars().Contains(character) ? '-' : character));
+    }
+
+    private static string GetUniqueArchiveEntryName(HashSet<string> usedNames, string entryName)
+    {
+        var directory = Path.GetDirectoryName(entryName)?.Replace('\\', '/');
+        var fileName = Path.GetFileNameWithoutExtension(entryName);
+        var extension = Path.GetExtension(entryName);
+        var candidate = entryName.Replace('\\', '/');
+        var suffix = 1;
+
+        while (!usedNames.Add(candidate))
+        {
+            var updatedFileName = $"{fileName}-{suffix}{extension}";
+            candidate = string.IsNullOrWhiteSpace(directory) ? updatedFileName : $"{directory}/{updatedFileName}";
+            suffix++;
+        }
+
+        return candidate;
     }
 
     private static string? NormalizeGhanaPhoneNumber(string? phoneNumber)
