@@ -261,6 +261,17 @@ const PaymentRequestDetail: React.FC<PaymentRequestDetailProps> = ({ requestId, 
     }
   };
 
+  const handleViewPDF = async () => {
+    try {
+      const blob = await api.downloadDocument(requestId);
+      const url = URL.createObjectURL(blob);
+      window.open(url, '_blank', 'noopener,noreferrer');
+      window.setTimeout(() => URL.revokeObjectURL(url), 60000);
+    } catch (err: any) {
+      toast.error('View error', { description: err.message });
+    }
+  };
+
   const handleDownloadAttachment = async (attachment: Attachment) => {
     if (!attachment.id) {
       toast.error('Download unavailable');
@@ -412,6 +423,7 @@ const PaymentRequestDetail: React.FC<PaymentRequestDetailProps> = ({ requestId, 
   }
 
   const canDownloadGeneratedPv = ['FinancePrepared', 'FinanceAuthorized', 'Approved'].includes(request.status);
+  const shouldShowViewPv = role === 'HeadOfFinance' && request.status === 'FinancePrepared';
 
   return (
     <div className="space-y-6">
@@ -437,12 +449,12 @@ const PaymentRequestDetail: React.FC<PaymentRequestDetailProps> = ({ requestId, 
         {/* Document Actions */}
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full lg:w-auto">
           <button
-            onClick={handleDownloadPDF}
+            onClick={shouldShowViewPv ? handleViewPDF : handleDownloadPDF}
             disabled={!canDownloadGeneratedPv}
             className="w-full lg:w-auto px-4 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors flex items-center justify-center gap-2 disabled:cursor-not-allowed disabled:opacity-50"
           >
             <Download className="w-4 h-4" />
-            {request.status === 'Approved' ? 'Download PV Package' : 'Download PV'}
+            {shouldShowViewPv ? 'View' : request.status === 'Approved' ? 'Download Full PV' : 'Download PV'}
           </button>
         </div>
       </div>

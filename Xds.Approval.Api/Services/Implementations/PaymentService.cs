@@ -610,10 +610,16 @@ public class PaymentService : IPaymentService
                             table.Cell().Element(DataCellStyle).Column(tax =>
                             {
                                 tax.Spacing(2);
-                                tax.Item().Text($"VAT {taxProfile.VatRate * 100:0}%: {vatAmount:N2}");
-                                tax.Item().Text($"WHT {taxProfile.WhtRate * 100:0}%: {whtAmount:N2}");
+                                tax.Item().Text($"VAT {taxProfile.VatRate * 100:0}%");
+                                tax.Item().Text($"WHT {taxProfile.WhtRate * 100:0}%");
                             });
-                            table.Cell().Element(DataCellStyle).AlignRight().Text($"{request.Amount:N2} {request.Currency}").Bold();
+                            table.Cell().Element(DataCellStyle).Column(amountColumn =>
+                            {
+                                amountColumn.Spacing(2);
+                                amountColumn.Item().AlignRight().Text($"{request.Amount:N2} {request.Currency}").Bold();
+                                amountColumn.Item().AlignRight().Text($"VAT: {vatAmount:N2} {request.Currency}");
+                                amountColumn.Item().AlignRight().Text($"WHT: {whtAmount:N2} {request.Currency}");
+                            });
 
                             table.Cell().ColumnSpan(3).Element(DataCellStyle).Text($"AMOUNT IN WORDS: {ToAmountInWords(request.Amount, string.IsNullOrWhiteSpace(request.Currency) ? "GHS" : request.Currency)}".ToUpperInvariant()).Bold();
                             table.Cell().Element(DataCellStyle).AlignRight().Text($"{request.Amount:N2}").Bold();
