@@ -8,7 +8,6 @@ import StatusBadge from './StatusBadge';
 import {
   ArrowLeft,
   FileText,
-  Download,
   CheckCircle2,
   XCircle,
   Banknote,
@@ -467,7 +466,7 @@ const PaymentRequestDetail: React.FC<PaymentRequestDetailProps> = ({ requestId, 
             disabled={!canDownloadGeneratedPv}
             className="w-full lg:w-auto px-4 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors flex items-center justify-center gap-2 disabled:cursor-not-allowed disabled:opacity-50"
           >
-            <Download className="w-4 h-4" />
+            {shouldShowViewPv ? <Eye className="w-4 h-4" /> : <FileText className="w-4 h-4" />}
             {shouldShowViewPv ? 'View' : request.status === 'Approved' ? 'Download Full PV' : 'Download PV'}
           </button>
         </div>
@@ -520,6 +519,11 @@ const PaymentRequestDetail: React.FC<PaymentRequestDetailProps> = ({ requestId, 
                   </p>
                 </div>
               </div>
+            )}
+            {taxBreakdown && (
+              <p className="text-sm text-slate-500 dark:text-slate-400">
+                Taxes are applied only when relevant to the selected tax category.
+              </p>
             )}
 
             <div>

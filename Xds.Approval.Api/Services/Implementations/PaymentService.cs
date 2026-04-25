@@ -617,13 +617,13 @@ public class PaymentService : IPaymentService
                             table.Cell().Element(DataCellStyle).Column(amountColumn =>
                             {
                                 amountColumn.Spacing(2);
-                                amountColumn.Item().AlignRight().Text($"{request.Amount:N2} {request.Currency}").Bold();
-                                amountColumn.Item().AlignRight().Text($"{vatAmount:N2} {request.Currency}");
-                                amountColumn.Item().AlignRight().Text($"{whtAmount:N2} {request.Currency}");
+                                amountColumn.Item().AlignRight().Text(FormatPdfAmount(request.Amount, request.Currency)).Bold();
+                                amountColumn.Item().AlignRight().Text(FormatPdfAmount(vatAmount, request.Currency));
+                                amountColumn.Item().AlignRight().Text(FormatPdfAmount(whtAmount, request.Currency));
                             });
 
-                            table.Cell().ColumnSpan(3).Element(DataCellStyle).Text($"AMOUNT IN WORDS: {ToAmountInWords(request.Amount, string.IsNullOrWhiteSpace(request.Currency) ? "GHS" : request.Currency)}".ToUpperInvariant()).Bold();
-                            table.Cell().Element(DataCellStyle).AlignRight().Text($"{totalAmountIncludingTaxes:N2}").Bold();
+                            table.Cell().ColumnSpan(3).Element(DataCellStyle).Text($"AMOUNT IN WORDS: {ToAmountInWords(totalAmountIncludingTaxes, string.IsNullOrWhiteSpace(request.Currency) ? "GHS" : request.Currency)}".ToUpperInvariant()).Bold();
+                            table.Cell().Element(DataCellStyle).AlignRight().Text(FormatPdfAmount(totalAmountIncludingTaxes, request.Currency)).Bold();
                         });
 
                         column.Item().PaddingTop(6).Table(infoTable =>
@@ -1229,6 +1229,15 @@ public class PaymentService : IPaymentService
         };
 
         return (0.15m, whtRate);
+    }
+
+    private static string FormatPdfAmount(decimal amount, string? currency)
+    {
+        var normalizedCurrency = string.IsNullOrWhiteSpace(currency) ? "GHS" : currency.Trim().ToUpperInvariant();
+
+        return normalizedCurrency == "GHS"
+            ? $"{amount:N2} \u20B5"
+            : $"{amount:N2} {normalizedCurrency}";
     }
 
     private static bool IsMimeTypeValidForExtension(string extension, string contentType)

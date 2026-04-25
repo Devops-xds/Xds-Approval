@@ -55,12 +55,14 @@ export const getTaxBreakdown = (amount: number, paymentType?: string | null) => 
   const profile = getTaxProfile(paymentType);
   const vatAmount = amount * profile.vatRate;
   const whtAmount = amount * profile.whtRate;
+  const totalTaxAmount = vatAmount + whtAmount;
 
   return {
     ...profile,
     vatAmount,
     whtAmount,
-    totalTaxAmount: vatAmount + whtAmount,
+    totalTaxAmount,
+    totalAmountIncludingTaxes: amount + totalTaxAmount,
   };
 };
 

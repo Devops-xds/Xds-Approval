@@ -291,6 +291,7 @@ const PaymentRequestForm: React.FC<PaymentRequestFormProps> = ({ onSuccess, onCa
           {taxBreakdown && (
             <div className="rounded-xl border border-emerald-100 bg-emerald-50/70 p-4">
               <p className="text-sm font-semibold text-emerald-900">Tax preview</p>
+              <p className="mt-1 text-xs text-emerald-800">Taxes are applied only when relevant to the selected tax category.</p>
               <div className="mt-2 grid grid-cols-1 gap-2 text-sm text-emerald-800 sm:grid-cols-3">
                 <p>VAT ({(taxBreakdown.vatRate * 100).toFixed(0)}%): {currency} {taxBreakdown.vatAmount.toFixed(2)}</p>
                 <p>WHT ({(taxBreakdown.whtRate * 100).toFixed(0)}%): {currency} {taxBreakdown.whtAmount.toFixed(2)}</p>
