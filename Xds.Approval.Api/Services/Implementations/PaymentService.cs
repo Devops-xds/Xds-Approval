@@ -567,38 +567,38 @@ public class PaymentService : IPaymentService
 
                     page.Content().Column(column =>
                     {
-                        column.Spacing(10);
-                        column.Item().AlignCenter().Text("TRANSFER PAYMENT VOUCHER").Bold().FontSize(16);
+                        column.Spacing(12);
+                        column.Item().PaddingTop(2).AlignCenter().Text("TRANSFER PAYMENT VOUCHER").Bold().FontSize(16);
                         column.Item().Row(row =>
                         {
-                            row.RelativeItem().Text($"NAME: {companyName}".ToUpperInvariant()).Bold();
-                            row.ConstantItem(120).AlignRight().Text(documentNumber).Bold();
+                            row.RelativeItem().Text($"NAME: {companyName}".ToUpperInvariant()).Bold().FontSize(11);
+                            row.ConstantItem(120).AlignRight().Text(documentNumber).SemiBold().FontSize(11);
                         });
-                        column.Item().AlignRight().Text("TRANSFER").Bold();
+                        column.Item().AlignRight().PaddingBottom(2).Text("TRANSFER").Bold().FontSize(10);
 
-                        column.Item().Table(table =>
+                        column.Item().PaddingTop(4).Table(table =>
                         {
                             table.ColumnsDefinition(columns =>
                             {
-                                columns.ConstantColumn(95);
-                                columns.RelativeColumn(4);
-                                columns.ConstantColumn(90);
-                                columns.ConstantColumn(110);
+                                columns.ConstantColumn(88);
+                                columns.RelativeColumn(4.4f);
+                                columns.ConstantColumn(112);
+                                columns.ConstantColumn(118);
                             });
 
                             table.Header(header =>
                             {
-                                header.Cell().Element(CellStyle).Text("DATE").Bold().AlignCenter();
-                                header.Cell().Element(CellStyle).Text("DESCRIPTION").Bold().AlignCenter();
-                                header.Cell().Element(CellStyle).Text("TAX(WHT)").Bold().AlignCenter();
-                                header.Cell().Element(CellStyle).Text("AMOUNT").Bold().AlignCenter();
+                                header.Cell().Element(HeaderCellStyle).AlignMiddle().Text("DATE").Bold().AlignCenter();
+                                header.Cell().Element(HeaderCellStyle).AlignMiddle().Text("DESCRIPTION").Bold().AlignCenter();
+                                header.Cell().Element(HeaderCellStyle).AlignMiddle().Text("TAX(WHT)").Bold().AlignCenter();
+                                header.Cell().Element(HeaderCellStyle).AlignMiddle().Text("AMOUNT").Bold().AlignCenter();
                             });
 
-                            table.Cell().Element(DataCellStyle).Text(request.CreatedAt.ToString("dd/MM/yyyy"));
+                            table.Cell().Element(DataCellStyle).AlignMiddle().Text(request.CreatedAt.ToString("dd/MM/yyyy")).FontSize(10);
                             table.Cell().Element(DataCellStyle).Column(details =>
                             {
-                                details.Spacing(2);
-                                details.Item().Text(request.Description).FontSize(11);
+                                details.Spacing(4);
+                                details.Item().PaddingTop(2).Text(request.Description).FontSize(10.5f);
                             });
                             var taxProfile = GetTaxProfile(request.PaymentType);
                             var vatAmount = Math.Round(request.Amount * taxProfile.VatRate, 2, MidpointRounding.AwayFromZero);
@@ -608,28 +608,28 @@ public class PaymentService : IPaymentService
 
                             table.Cell().Element(DataCellStyle).Column(tax =>
                             {
-                                tax.Spacing(2);
-                                tax.Item().Text(" ");
+                                tax.Spacing(4);
+                                tax.Item().Height(20).AlignMiddle().Text(" ");
                                 foreach (var taxRow in taxRows)
                                 {
-                                    tax.Item().Text(taxRow.Label);
+                                    tax.Item().Height(20).AlignMiddle().Text(taxRow.Label).FontSize(10);
                                 }
                             });
                             table.Cell().Element(DataCellStyle).Column(amountColumn =>
                             {
-                                amountColumn.Spacing(2);
-                                amountColumn.Item().AlignRight().Text(FormatPdfAmount(request.Amount, request.Currency)).Bold();
+                                amountColumn.Spacing(4);
+                                amountColumn.Item().Height(20).AlignMiddle().AlignRight().Text(FormatPdfAmount(request.Amount, request.Currency)).Bold().FontSize(10.5f);
                                 foreach (var taxRow in taxRows)
                                 {
-                                    amountColumn.Item().AlignRight().Text(FormatPdfAmount(taxRow.Amount, request.Currency));
+                                    amountColumn.Item().Height(20).AlignMiddle().AlignRight().Text(FormatPdfAmount(taxRow.Amount, request.Currency)).FontSize(10);
                                 }
                             });
 
-                            table.Cell().ColumnSpan(3).Element(DataCellStyle).Text($"AMOUNT IN WORDS: {ToAmountInWords(totalAmountIncludingTaxes, string.IsNullOrWhiteSpace(request.Currency) ? "GHS" : request.Currency)}".ToUpperInvariant()).Bold();
-                            table.Cell().Element(DataCellStyle).AlignRight().Text(FormatPdfAmount(totalAmountIncludingTaxes, request.Currency)).Bold();
+                            table.Cell().ColumnSpan(3).Element(TotalCellStyle).Text($"AMOUNT IN WORDS: {ToAmountInWords(totalAmountIncludingTaxes, string.IsNullOrWhiteSpace(request.Currency) ? "GHS" : request.Currency)}".ToUpperInvariant()).Bold().FontSize(10.5f);
+                            table.Cell().Element(TotalAmountCellStyle).AlignMiddle().AlignRight().Text(FormatPdfAmount(totalAmountIncludingTaxes, request.Currency)).Bold().FontSize(11);
                         });
 
-                        column.Item().PaddingTop(6).Table(infoTable =>
+                        column.Item().PaddingTop(8).Table(infoTable =>
                         {
                             infoTable.ColumnsDefinition(columns =>
                             {
@@ -681,7 +681,7 @@ public class PaymentService : IPaymentService
                             });
                         });
 
-                        column.Item().PaddingTop(4).Text($"Verification code: {verificationCode}");
+                        column.Item().PaddingTop(6).Text($"Verification code: {verificationCode}").FontSize(9.5f);
 
                         if (attachmentNames.Count > 0)
                         {
@@ -695,7 +695,7 @@ public class PaymentService : IPaymentService
                             });
                         }
 
-                        column.Item().PaddingTop(8).Row(row =>
+                        column.Item().PaddingTop(10).Row(row =>
                         {
                             row.Spacing(24);
                             row.RelativeItem().Element(container => ComposeSignatureBlock(container, "Finance Manager", reviewedBy ?? "-", financeProcessing?.AuthorizedAt, headFinanceSignature));
@@ -1416,22 +1416,46 @@ public class PaymentService : IPaymentService
             .Background(Colors.Grey.Lighten5);
     }
 
+    private static IContainer HeaderCellStyle(IContainer container)
+    {
+        return CellStyle(container)
+            .MinHeight(28)
+            .Background(Colors.Grey.Lighten4);
+    }
+
     private static IContainer DataCellStyle(IContainer container)
     {
         return container
             .Border(1)
             .BorderColor(Colors.Grey.Lighten1)
-            .PaddingVertical(8)
+            .MinHeight(128)
+            .PaddingVertical(10)
             .PaddingHorizontal(8);
+    }
+
+    private static IContainer TotalCellStyle(IContainer container)
+    {
+        return container
+            .Border(1)
+            .BorderColor(Colors.Grey.Lighten1)
+            .Background(Colors.Grey.Lighten5)
+            .PaddingVertical(10)
+            .PaddingHorizontal(10);
+    }
+
+    private static IContainer TotalAmountCellStyle(IContainer container)
+    {
+        return TotalCellStyle(container)
+            .Background(Colors.Green.Lighten5);
     }
 
     private static void ComposeSignatureBlock(IContainer container, string title, string signerName, DateTime? signedAt, byte[]? signatureBytes)
     {
         container.Column(column =>
         {
-            column.Spacing(2);
+            column.Spacing(3);
             column.Item().Text(title).SemiBold().FontSize(11);
-            column.Item().Height(40).BorderBottom(1).BorderColor(Colors.Grey.Lighten1).AlignBottom().AlignCenter().PaddingBottom(1).Element(imageContainer =>
+            column.Item().Height(44).BorderBottom(1).BorderColor(Colors.Grey.Lighten1).AlignBottom().AlignCenter().PaddingBottom(2).Element(imageContainer =>
             {
                 if (signatureBytes is not null)
                 {
