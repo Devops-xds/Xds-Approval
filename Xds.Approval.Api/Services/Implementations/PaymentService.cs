@@ -611,6 +611,7 @@ public class PaymentService : IPaymentService
                             table.Cell().Element(DataCellStyle).Column(tax =>
                             {
                                 tax.Spacing(2);
+                                tax.Item().Text(" ");
                                 tax.Item().Text($"VAT {taxProfile.VatRate * 100:0}%");
                                 tax.Item().Text($"WHT {taxProfile.WhtRate * 100:0}%");
                             });
