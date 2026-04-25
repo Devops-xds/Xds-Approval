@@ -51,6 +51,7 @@ const PaymentRequestDetail: React.FC<PaymentRequestDetailProps> = ({ requestId, 
   const [recipientTelephone, setRecipientTelephone] = useState('');
   const [financeFormError, setFinanceFormError] = useState('');
   const [previewAttachment, setPreviewAttachment] = useState<Attachment | null>(null);
+  const [previewTitle, setPreviewTitle] = useState('');
   const [previewUrl, setPreviewUrl] = useState('');
   const [isPreviewLoading, setIsPreviewLoading] = useState(false);
 
@@ -228,6 +229,7 @@ const PaymentRequestDetail: React.FC<PaymentRequestDetailProps> = ({ requestId, 
     }
 
     setPreviewAttachment(null);
+    setPreviewTitle('');
     setPreviewUrl('');
     setIsPreviewLoading(false);
   };
@@ -250,6 +252,7 @@ const PaymentRequestDetail: React.FC<PaymentRequestDetailProps> = ({ requestId, 
       }
 
       setPreviewAttachment(attachment);
+      setPreviewTitle('');
       setPreviewUrl(objectUrl);
     } catch (err: any) {
       closePreview();
@@ -262,13 +265,24 @@ const PaymentRequestDetail: React.FC<PaymentRequestDetailProps> = ({ requestId, 
   };
 
   const handleViewPDF = async () => {
+    setIsPreviewLoading(true);
+    setPreviewAttachment(null);
+    setPreviewTitle('PV preview');
+
     try {
       const blob = await api.downloadDocument(requestId);
-      const url = URL.createObjectURL(blob);
-      window.open(url, '_blank', 'noopener,noreferrer');
-      window.setTimeout(() => URL.revokeObjectURL(url), 60000);
+      const objectUrl = URL.createObjectURL(blob);
+
+      if (previewUrl) {
+        URL.revokeObjectURL(previewUrl);
+      }
+
+      setPreviewUrl(objectUrl);
     } catch (err: any) {
+      closePreview();
       toast.error('View error', { description: err.message });
+    } finally {
+      setIsPreviewLoading(false);
     }
   };
 
@@ -1002,13 +1016,13 @@ const PaymentRequestDetail: React.FC<PaymentRequestDetailProps> = ({ requestId, 
         </div>
       )}
 
-      {previewAttachment && (
+      {(previewAttachment || previewTitle) && (
         <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl w-full max-w-[95vw] h-[92vh] overflow-hidden shadow-2xl">
             <div className="flex items-center justify-between px-5 py-4 border-b border-slate-200">
               <div>
-                <h3 className="text-base font-semibold text-slate-900">{previewAttachment.fileName}</h3>
-                <p className="text-xs text-slate-400">Attachment preview</p>
+                <h3 className="text-base font-semibold text-slate-900">{previewAttachment?.fileName || previewTitle}</h3>
+                <p className="text-xs text-slate-400">{previewAttachment ? 'Attachment preview' : 'PV preview'}</p>
               </div>
               <button
                 type="button"
@@ -1023,7 +1037,7 @@ const PaymentRequestDetail: React.FC<PaymentRequestDetailProps> = ({ requestId, 
                 <div className="h-full w-full flex items-center justify-center">
                   <div className="w-8 h-8 border-2 border-slate-300 border-t-slate-700 rounded-full animate-spin" />
                 </div>
-              ) : previewUrl && previewAttachment.contentType?.startsWith('image/') ? (
+              ) : previewUrl && previewAttachment?.contentType?.startsWith('image/') ? (
                 <img
                   src={previewUrl}
                   alt={previewAttachment.fileName}
@@ -1031,7 +1045,7 @@ const PaymentRequestDetail: React.FC<PaymentRequestDetailProps> = ({ requestId, 
                 />
               ) : previewUrl ? (
                 <iframe
-                  title={previewAttachment.fileName}
+                  title={previewAttachment?.fileName || previewTitle}
                   src={previewUrl}
                   className="h-full w-full"
                 />

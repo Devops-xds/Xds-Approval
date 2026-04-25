@@ -606,6 +606,7 @@ public class PaymentService : IPaymentService
                             var taxProfile = GetTaxProfile(request.PaymentType);
                             var vatAmount = Math.Round(request.Amount * taxProfile.VatRate, 2, MidpointRounding.AwayFromZero);
                             var whtAmount = Math.Round(request.Amount * taxProfile.WhtRate, 2, MidpointRounding.AwayFromZero);
+                            var totalAmountIncludingTaxes = request.Amount + vatAmount + whtAmount;
 
                             table.Cell().Element(DataCellStyle).Column(tax =>
                             {
@@ -617,12 +618,12 @@ public class PaymentService : IPaymentService
                             {
                                 amountColumn.Spacing(2);
                                 amountColumn.Item().AlignRight().Text($"{request.Amount:N2} {request.Currency}").Bold();
-                                amountColumn.Item().AlignRight().Text($"VAT: {vatAmount:N2} {request.Currency}");
-                                amountColumn.Item().AlignRight().Text($"WHT: {whtAmount:N2} {request.Currency}");
+                                amountColumn.Item().AlignRight().Text($"{vatAmount:N2} {request.Currency}");
+                                amountColumn.Item().AlignRight().Text($"{whtAmount:N2} {request.Currency}");
                             });
 
                             table.Cell().ColumnSpan(3).Element(DataCellStyle).Text($"AMOUNT IN WORDS: {ToAmountInWords(request.Amount, string.IsNullOrWhiteSpace(request.Currency) ? "GHS" : request.Currency)}".ToUpperInvariant()).Bold();
-                            table.Cell().Element(DataCellStyle).AlignRight().Text($"{request.Amount:N2}").Bold();
+                            table.Cell().Element(DataCellStyle).AlignRight().Text($"{totalAmountIncludingTaxes:N2}").Bold();
                         });
 
                         column.Item().PaddingTop(6).Table(infoTable =>
