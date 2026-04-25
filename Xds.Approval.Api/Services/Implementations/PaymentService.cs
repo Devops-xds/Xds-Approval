@@ -504,8 +504,8 @@ public class PaymentService : IPaymentService
         var companyWebsite = _configuration["PdfTemplate:CompanyWebsite"] ?? "xdsdataghana.com";
         var companyLicense = _configuration["PdfTemplate:CompanyLicense"] ?? "Credit Bureau License: 001";
         var logoBytes = LoadPdfLogo();
-        var headFinanceSignature = LoadSignatureImage("HeadOfFinance");
-        var ceoSignature = LoadSignatureImage("CEO");
+        var headFinanceSignature = hasFinanceAuthorization ? LoadSignatureImage("HeadOfFinance") : null;
+        var ceoSignature = hasFinanceAuthorization ? LoadSignatureImage("CEO") : null;
         var attachmentNames = request.Attachments?
             .Where(attachment => attachment.UploadedBy == request.RequestedBy)
             .OrderBy(attachment => attachment.UploadedAt)
@@ -1203,7 +1203,7 @@ public class PaymentService : IPaymentService
             "USD" => "United States Dollars",
             "EUR" => "Euros",
             "GBP" => "Pounds Sterling",
-            _ => "Cedis"
+            _ => "Ghana Cedis"
         };
 
         var wholeWords = wholeNumber == 0 ? "Zero" : NumberToWords(wholeNumber);
