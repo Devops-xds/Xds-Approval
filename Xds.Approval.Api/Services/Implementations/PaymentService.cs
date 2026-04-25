@@ -568,13 +568,31 @@ public class PaymentService : IPaymentService
                     page.Content().Column(column =>
                     {
                         column.Spacing(12);
-                        column.Item().PaddingTop(2).AlignCenter().Text("TRANSFER PAYMENT VOUCHER").Bold().FontSize(16);
-                        column.Item().Row(row =>
+                        column.Item().PaddingTop(2).Border(1).BorderColor(Colors.Grey.Lighten2).Background(Colors.Grey.Lighten5).Padding(12).Column(headerBlock =>
                         {
-                            row.RelativeItem().Text($"NAME: {companyName}".ToUpperInvariant()).Bold().FontSize(11);
-                            row.ConstantItem(120).AlignRight().Text(documentNumber).SemiBold().FontSize(11);
+                            headerBlock.Spacing(8);
+                            headerBlock.Item().AlignCenter().Text("TRANSFER PAYMENT VOUCHER").Bold().FontSize(16).FontColor(Colors.Green.Darken3);
+                            headerBlock.Item().Row(row =>
+                            {
+                                row.RelativeItem().Column(identity =>
+                                {
+                                    identity.Spacing(2);
+                                    identity.Item().Text("PAYEE / COMPANY").SemiBold().FontSize(9).FontColor(Colors.Grey.Darken2);
+                                    identity.Item().Text(companyName.ToUpperInvariant()).Bold().FontSize(11);
+                                });
+                                row.ConstantItem(140).Column(meta =>
+                                {
+                                    meta.Spacing(2);
+                                    meta.Item().AlignRight().Text("VOUCHER NUMBER").SemiBold().FontSize(9).FontColor(Colors.Grey.Darken2);
+                                    meta.Item().AlignRight().Text(documentNumber).Bold().FontSize(11);
+                                });
+                            });
+                            headerBlock.Item().Row(row =>
+                            {
+                                row.RelativeItem().Text($"PAYMENT MODE: TRANSFER").SemiBold().FontSize(9.5f).FontColor(Colors.Grey.Darken2);
+                                row.ConstantItem(140).AlignRight().Text($"DATE: {request.CreatedAt:dd/MM/yyyy}").SemiBold().FontSize(9.5f).FontColor(Colors.Grey.Darken2);
+                            });
                         });
-                        column.Item().AlignRight().PaddingBottom(2).Text("TRANSFER").Bold().FontSize(10);
 
                         column.Item().PaddingTop(4).Table(table =>
                         {
@@ -598,6 +616,7 @@ public class PaymentService : IPaymentService
                             table.Cell().Element(DataCellStyle).Column(details =>
                             {
                                 details.Spacing(4);
+                                details.Item().Text("PAYMENT DESCRIPTION").SemiBold().FontSize(8.5f).FontColor(Colors.Grey.Darken2);
                                 details.Item().PaddingTop(2).Text(request.Description).FontSize(10.5f);
                             });
                             var taxProfile = GetTaxProfile(request.PaymentType);
@@ -625,7 +644,12 @@ public class PaymentService : IPaymentService
                                 }
                             });
 
-                            table.Cell().ColumnSpan(3).Element(TotalCellStyle).Text($"AMOUNT IN WORDS: {ToAmountInWords(totalAmountIncludingTaxes, string.IsNullOrWhiteSpace(request.Currency) ? "GHS" : request.Currency)}".ToUpperInvariant()).Bold().FontSize(10.5f);
+                            table.Cell().ColumnSpan(3).Element(TotalCellStyle).Column(totalWords =>
+                            {
+                                totalWords.Spacing(3);
+                                totalWords.Item().Text("AMOUNT IN WORDS").SemiBold().FontSize(8.5f).FontColor(Colors.Grey.Darken2);
+                                totalWords.Item().Text(ToAmountInWords(totalAmountIncludingTaxes, string.IsNullOrWhiteSpace(request.Currency) ? "GHS" : request.Currency).ToUpperInvariant()).Bold().FontSize(10.5f);
+                            });
                             table.Cell().Element(TotalAmountCellStyle).AlignMiddle().AlignRight().Text(FormatPdfAmount(totalAmountIncludingTaxes, request.Currency)).Bold().FontSize(11);
                         });
 
@@ -638,59 +662,64 @@ public class PaymentService : IPaymentService
                                 columns.RelativeColumn();
                             });
 
-                            infoTable.Cell().Element(DataCellStyle).Column(details =>
+                            infoTable.Cell().Element(InfoCellStyle).Column(details =>
                             {
-                                details.Spacing(3);
-                                details.Item().Text("PREPARED BY").Bold();
-                                details.Item().Text(preparedBy);
+                                details.Spacing(4);
+                                details.Item().Text("PREPARED BY").SemiBold().FontSize(8.5f).FontColor(Colors.Grey.Darken2);
+                                details.Item().Text(preparedBy).FontSize(10.5f);
                             });
 
-                            infoTable.Cell().Element(DataCellStyle).Column(details =>
+                            infoTable.Cell().Element(InfoCellStyle).Column(details =>
                             {
-                                details.Spacing(3);
-                                details.Item().Text("REVIEWED BY").Bold();
-                                details.Item().Text(reviewedBy);
+                                details.Spacing(4);
+                                details.Item().Text("REVIEWED BY").SemiBold().FontSize(8.5f).FontColor(Colors.Grey.Darken2);
+                                details.Item().Text(reviewedBy).FontSize(10.5f);
                             });
 
-                            infoTable.Cell().Element(DataCellStyle).Column(details =>
+                            infoTable.Cell().Element(InfoCellStyle).Column(details =>
                             {
-                                details.Spacing(3);
-                                details.Item().Text("APPROVED BY").Bold();
-                                details.Item().Text(approvedBy);
+                                details.Spacing(4);
+                                details.Item().Text("APPROVED BY").SemiBold().FontSize(8.5f).FontColor(Colors.Grey.Darken2);
+                                details.Item().Text(approvedBy).FontSize(10.5f);
                             });
 
-                            infoTable.Cell().Element(DataCellStyle).Column(details =>
+                            infoTable.Cell().Element(InfoCellStyle).Column(details =>
                             {
-                                details.Spacing(3);
-                                details.Item().Text("RECIPIENT NAME").Bold();
-                                details.Item().Text(recipientName);
+                                details.Spacing(4);
+                                details.Item().Text("RECIPIENT NAME").SemiBold().FontSize(8.5f).FontColor(Colors.Grey.Darken2);
+                                details.Item().Text(recipientName).FontSize(10.5f);
                             });
 
-                            infoTable.Cell().Element(DataCellStyle).Column(details =>
+                            infoTable.Cell().Element(InfoCellStyle).Column(details =>
                             {
-                                details.Spacing(3);
-                                details.Item().Text("ADDRESS").Bold();
-                                details.Item().Text(recipientAddress);
+                                details.Spacing(4);
+                                details.Item().Text("ADDRESS").SemiBold().FontSize(8.5f).FontColor(Colors.Grey.Darken2);
+                                details.Item().Text(recipientAddress).FontSize(10.5f);
                             });
 
-                            infoTable.Cell().Element(DataCellStyle).Column(details =>
+                            infoTable.Cell().Element(InfoCellStyle).Column(details =>
                             {
-                                details.Spacing(3);
-                                details.Item().Text("TELEPHONE").Bold();
-                                details.Item().Text(recipientTelephone);
+                                details.Spacing(4);
+                                details.Item().Text("TELEPHONE").SemiBold().FontSize(8.5f).FontColor(Colors.Grey.Darken2);
+                                details.Item().Text(recipientTelephone).FontSize(10.5f);
                             });
                         });
 
-                        column.Item().PaddingTop(6).Text($"Verification code: {verificationCode}").FontSize(9.5f);
+                        column.Item().PaddingTop(6).Border(1).BorderColor(Colors.Grey.Lighten2).Background(Colors.Grey.Lighten5).PaddingHorizontal(10).PaddingVertical(8).Row(row =>
+                        {
+                            row.RelativeItem().Text("VERIFICATION CODE").SemiBold().FontSize(8.5f).FontColor(Colors.Grey.Darken2);
+                            row.ConstantItem(160).AlignRight().Text(verificationCode).SemiBold().FontSize(10);
+                        });
 
                         if (attachmentNames.Count > 0)
                         {
-                            column.Item().Column(files =>
+                            column.Item().PaddingTop(2).Element(InfoPanelStyle).Column(files =>
                             {
-                                files.Item().Text("ATTACHED DOCUMENTS").Bold();
+                                files.Spacing(4);
+                                files.Item().Text("ATTACHED DOCUMENTS").SemiBold().FontSize(8.5f).FontColor(Colors.Grey.Darken2);
                                 foreach (var name in attachmentNames)
                                 {
-                                    files.Item().Text($"- {name}");
+                                    files.Item().Text($"- {name}").FontSize(10);
                                 }
                             });
                         }
@@ -1433,11 +1462,22 @@ public class PaymentService : IPaymentService
             .PaddingHorizontal(8);
     }
 
+    private static IContainer InfoCellStyle(IContainer container)
+    {
+        return container
+            .Border(1)
+            .BorderColor(Colors.Grey.Lighten2)
+            .Background(Colors.White)
+            .MinHeight(60)
+            .PaddingVertical(10)
+            .PaddingHorizontal(10);
+    }
+
     private static IContainer TotalCellStyle(IContainer container)
     {
         return container
             .Border(1)
-            .BorderColor(Colors.Grey.Lighten1)
+            .BorderColor(Colors.Green.Medium)
             .Background(Colors.Grey.Lighten5)
             .PaddingVertical(10)
             .PaddingHorizontal(10);
@@ -1446,15 +1486,28 @@ public class PaymentService : IPaymentService
     private static IContainer TotalAmountCellStyle(IContainer container)
     {
         return TotalCellStyle(container)
-            .Background(Colors.Green.Lighten5);
+            .Background(Colors.Green.Lighten4)
+            .Border(1.5f)
+            .PaddingVertical(12)
+            .PaddingHorizontal(12);
+    }
+
+    private static IContainer InfoPanelStyle(IContainer container)
+    {
+        return container
+            .Border(1)
+            .BorderColor(Colors.Grey.Lighten2)
+            .Background(Colors.White)
+            .PaddingVertical(10)
+            .PaddingHorizontal(10);
     }
 
     private static void ComposeSignatureBlock(IContainer container, string title, string signerName, DateTime? signedAt, byte[]? signatureBytes)
     {
-        container.Column(column =>
+        container.Element(InfoPanelStyle).Column(column =>
         {
-            column.Spacing(3);
-            column.Item().Text(title).SemiBold().FontSize(11);
+            column.Spacing(4);
+            column.Item().Text(title).SemiBold().FontSize(8.5f).FontColor(Colors.Grey.Darken2);
             column.Item().Height(44).BorderBottom(1).BorderColor(Colors.Grey.Lighten1).AlignBottom().AlignCenter().PaddingBottom(2).Element(imageContainer =>
             {
                 if (signatureBytes is not null)
@@ -1462,7 +1515,7 @@ public class PaymentService : IPaymentService
                     imageContainer.Image(signatureBytes).FitHeight();
                 }
             });
-            column.Item().Text(string.IsNullOrWhiteSpace(signerName) ? "-" : signerName).FontSize(10);
+            column.Item().Text(string.IsNullOrWhiteSpace(signerName) ? "-" : signerName).FontSize(10.5f).SemiBold();
             column.Item().Text(signedAt.HasValue ? signedAt.Value.ToString("dd/MM/yyyy HH:mm") : "-").FontSize(9).FontColor(Colors.Grey.Darken1);
         });
     }
