@@ -24,6 +24,7 @@ import {
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { enGB } from 'date-fns/locale';
+import { PDFDocument } from 'pdf-lib';
 import { toast } from 'sonner';
 
 interface PaymentRequestDetailProps {
@@ -185,12 +186,12 @@ const PaymentRequestDetail: React.FC<PaymentRequestDetailProps> = ({ requestId, 
     try {
       const isFinalPackage = request?.status === 'Approved';
       const blob = isFinalPackage
-        ? await api.downloadArchive(requestId)
+        ? await buildCombinedPdf()
         : await api.downloadDocument(requestId);
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = isFinalPackage ? `request-${requestId}-package.zip` : `request-${requestId}.pdf`;
+      a.download = `request-${requestId}.pdf`;
       document.body.appendChild(a);
       a.click();
       window.setTimeout(() => {
@@ -202,11 +203,53 @@ const PaymentRequestDetail: React.FC<PaymentRequestDetailProps> = ({ requestId, 
     }
   };
 
+  const buildCombinedPdf = async () => {
+    const mergedPdf = await PDFDocument.create();
+    const mainDocument = await api.downloadDocument(requestId);
+    const mainPages = await PDFDocument.load(await mainDocument.arrayBuffer());
+
+    const copiedMainPages = await mergedPdf.copyPages(mainPages, mainPages.getPageIndices());
+    for (const page of copiedMainPages) {
+      mergedPdf.addPage(page);
+    }
+
+    const attachments = request?.attachments ?? [];
+    for (const attachment of attachments) {
+      if (!attachment.id) {
+        continue;
+      }
+
+      const blob = await api.downloadAttachment(requestId, attachment.id);
+      const attachmentPdf = await PDFDocument.load(await blob.arrayBuffer());
+      const copiedAttachmentPages = await mergedPdf.copyPages(attachmentPdf, attachmentPdf.getPageIndices());
+
+      for (const page of copiedAttachmentPages) {
+        mergedPdf.addPage(page);
+      }
+    }
+
+    const mergedBytes = await mergedPdf.save();
+    return new Blob([mergedBytes], { type: 'application/pdf' });
+  };
+
   const handleUploadAttachment = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!e.target.files?.length) return;
+
+    const files = Array.from(e.target.files);
+    const invalidFiles = files.filter((file) =>
+      file.type !== 'application/pdf' && !file.name.toLowerCase().endsWith('.pdf'));
+
+    if (invalidFiles.length > 0) {
+      toast.error('Invalid attachment', {
+        description: 'Only PDF files are allowed.',
+      });
+      e.target.value = '';
+      return;
+    }
+
     setIsUploading(true);
     try {
-      for (const file of Array.from(e.target.files)) {
+      for (const file of files) {
         await api.uploadAttachment(requestId, file);
       }
       toast.success('File(s) added');
@@ -215,12 +258,13 @@ const PaymentRequestDetail: React.FC<PaymentRequestDetailProps> = ({ requestId, 
       toast.error('Upload error', { description: err.message });
     } finally {
       setIsUploading(false);
+      e.target.value = '';
     }
   };
 
   const canPreviewAttachment = (attachment: Attachment) => {
     const contentType = attachment.contentType?.toLowerCase() || '';
-    return contentType.startsWith('image/') || contentType === 'application/pdf';
+    return contentType === 'application/pdf';
   };
 
   const closePreview = () => {
@@ -568,7 +612,7 @@ const PaymentRequestDetail: React.FC<PaymentRequestDetailProps> = ({ requestId, 
                 <label className={`px-3 py-1.5 rounded-lg text-sm font-medium cursor-pointer transition-colors flex items-center gap-1.5 ${themeClasses[colorTheme].upload}`}>
                   <Upload className="w-4 h-4" />
                   {isUploading ? 'Uploading...' : role === 'Finance' ? 'Attach document' : 'Add'}
-                  <input type="file" multiple onChange={handleUploadAttachment} className="hidden" />
+                  <input type="file" accept=".pdf,application/pdf" multiple onChange={handleUploadAttachment} className="hidden" />
                 </label>
               )}
             </div>

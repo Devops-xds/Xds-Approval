@@ -40,6 +40,19 @@ const PaymentRequestForm: React.FC<PaymentRequestFormProps> = ({ onSuccess, onCa
     ? getTaxBreakdown(numericAmount, paymentType)
     : null;
 
+  const getPdfFiles = (incomingFiles: File[]) => {
+    const pdfFiles = incomingFiles.filter((file) =>
+      file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf'));
+
+    if (pdfFiles.length !== incomingFiles.length) {
+      toast.error('Invalid attachment', {
+        description: 'Only PDF files are allowed.',
+      });
+    }
+
+    return pdfFiles;
+  };
+
   const validate = () => {
     const newErrors: Record<string, string> = {};
     if (!title.trim()) newErrors.title = 'Title is required';
@@ -92,14 +105,22 @@ const PaymentRequestForm: React.FC<PaymentRequestFormProps> = ({ onSuccess, onCa
 
   const handleFileDrop = (e: React.DragEvent) => {
     e.preventDefault();
-    const droppedFiles = Array.from(e.dataTransfer.files);
+    const droppedFiles = getPdfFiles(Array.from(e.dataTransfer.files));
+    if (droppedFiles.length === 0) {
+      return;
+    }
+
     setFiles((prev) => [...prev, ...droppedFiles]);
   };
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
-      const selectedFiles = Array.from(e.target.files);
-      setFiles((prev) => [...prev, ...selectedFiles]);
+      const selectedFiles = getPdfFiles(Array.from(e.target.files));
+      if (selectedFiles.length > 0) {
+        setFiles((prev) => [...prev, ...selectedFiles]);
+      }
+
+      e.target.value = '';
     }
   };
 
@@ -313,14 +334,15 @@ const PaymentRequestForm: React.FC<PaymentRequestFormProps> = ({ onSuccess, onCa
           >
             <Upload className="w-10 h-10 text-slate-300 mx-auto mb-3" />
             <p className="text-sm font-medium text-slate-600">
-              Drag and drop your files here
+              Drag and drop your PDF files here
             </p>
             <p className="text-xs text-slate-400 mt-1">
-              or click to select
+              or click to select PDF only
             </p>
             <input
               ref={fileInputRef}
               type="file"
+              accept=".pdf,application/pdf"
               multiple
               onChange={handleFileSelect}
               className="hidden"
