@@ -1144,6 +1144,9 @@ public class PaymentService : IPaymentService
             "goods" => "Goods",
             "service" => "Service",
             "residence" => "Residence",
+            "non-residence" => "Non-Residence",
+            "non residence" => "Non-Residence",
+            "nonresidence" => "Non-Residence",
             "crossboarder" => "Crossboarder",
             "crossborder" => "Crossboarder",
             "cross border" => "Crossboarder",
@@ -1233,8 +1236,9 @@ public class PaymentService : IPaymentService
         return normalizedPaymentType switch
         {
             "Goods" => 0.03m,
-            "Service" => 0.05m,
+            "Service" => 0.075m,
             "Residence" => 0.10m,
+            "Non-Residence" => 0.15m,
             "Crossboarder" => 0.20m,
             _ => 0m
         };
@@ -1251,8 +1255,9 @@ public class PaymentService : IPaymentService
         var rows = new List<(string Label, decimal Amount)>
         {
             ("WHT Goods 3%", applicableWhtRate == 0.03m ? Math.Round(baseAmount * 0.03m, 2, MidpointRounding.AwayFromZero) : 0m),
-            ("WHT Service 5%", applicableWhtRate == 0.05m ? Math.Round(baseAmount * 0.05m, 2, MidpointRounding.AwayFromZero) : 0m),
+            ("WHT Service 7.5%", applicableWhtRate == 0.075m ? Math.Round(baseAmount * 0.075m, 2, MidpointRounding.AwayFromZero) : 0m),
             ("WHT Residence 10%", applicableWhtRate == 0.10m ? Math.Round(baseAmount * 0.10m, 2, MidpointRounding.AwayFromZero) : 0m),
+            ("WHT Non-Residence 15%", applicableWhtRate == 0.15m ? Math.Round(baseAmount * 0.15m, 2, MidpointRounding.AwayFromZero) : 0m),
             ("WHT Crossboarder 20%", applicableWhtRate == 0.20m ? Math.Round(baseAmount * 0.20m, 2, MidpointRounding.AwayFromZero) : 0m)
         };
 
