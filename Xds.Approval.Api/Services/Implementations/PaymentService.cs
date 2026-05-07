@@ -17,6 +17,7 @@ using Xds.Approval.Api.DTOs.Payment;
 
 public class PaymentService : IPaymentService
 {
+    private const decimal WhtThresholdAmount = 2000m;
     private readonly AppDbContext _context;
     private readonly IWebHostEnvironment _environment;
     private readonly IConfiguration _configuration;
@@ -614,8 +615,9 @@ public class PaymentService : IPaymentService
                                 details.Item().PaddingTop(1).Text(request.Description).FontSize(9.1f).LineHeight(1.05f);
                             });
                             var taxProfile = GetTaxProfile(request.PaymentType);
+                            var whtRate = GetApplicableWhtRate(request.Amount, taxProfile.WhtRate);
                             var vatAmount = Math.Round(request.Amount * taxProfile.VatRate, 2, MidpointRounding.AwayFromZero);
-                            var whtAmount = Math.Round(request.Amount * taxProfile.WhtRate, 2, MidpointRounding.AwayFromZero);
+                            var whtAmount = Math.Round(request.Amount * whtRate, 2, MidpointRounding.AwayFromZero);
                             var totalAmountIncludingTaxes = request.Amount + vatAmount + whtAmount;
                             var taxRows = BuildPdfTaxRows(request.Amount, taxProfile, vatAmount);
 
@@ -1240,15 +1242,21 @@ public class PaymentService : IPaymentService
         return (0.15m, whtRate);
     }
 
+    private static decimal GetApplicableWhtRate(decimal amount, decimal whtRate)
+    {
+        return amount >= WhtThresholdAmount ? whtRate : 0m;
+    }
+
     private static List<(string Label, decimal Amount)> BuildPdfTaxRows(decimal baseAmount, (decimal VatRate, decimal WhtRate) taxProfile, decimal vatAmount)
     {
+        var applicableWhtRate = GetApplicableWhtRate(baseAmount, taxProfile.WhtRate);
         var rows = new List<(string Label, decimal Amount)>
         {
             ($"VAT {taxProfile.VatRate * 100:0}%", vatAmount),
-            ("WHT Goods 3%", taxProfile.WhtRate == 0.03m ? Math.Round(baseAmount * 0.03m, 2, MidpointRounding.AwayFromZero) : 0m),
-            ("WHT Service 5%", taxProfile.WhtRate == 0.05m ? Math.Round(baseAmount * 0.05m, 2, MidpointRounding.AwayFromZero) : 0m),
-            ("WHT Residence 10%", taxProfile.WhtRate == 0.10m ? Math.Round(baseAmount * 0.10m, 2, MidpointRounding.AwayFromZero) : 0m),
-            ("WHT Crossboarder 20%", taxProfile.WhtRate == 0.20m ? Math.Round(baseAmount * 0.20m, 2, MidpointRounding.AwayFromZero) : 0m)
+            ("WHT Goods 3%", applicableWhtRate == 0.03m ? Math.Round(baseAmount * 0.03m, 2, MidpointRounding.AwayFromZero) : 0m),
+            ("WHT Service 5%", applicableWhtRate == 0.05m ? Math.Round(baseAmount * 0.05m, 2, MidpointRounding.AwayFromZero) : 0m),
+            ("WHT Residence 10%", applicableWhtRate == 0.10m ? Math.Round(baseAmount * 0.10m, 2, MidpointRounding.AwayFromZero) : 0m),
+            ("WHT Crossboarder 20%", applicableWhtRate == 0.20m ? Math.Round(baseAmount * 0.20m, 2, MidpointRounding.AwayFromZero) : 0m)
         };
 
         return rows;

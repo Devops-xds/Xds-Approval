@@ -8,6 +8,7 @@ export interface TaxProfile {
 }
 
 const DEFAULT_VAT_RATE = 0.15;
+const WHT_THRESHOLD_AMOUNT = 2000;
 
 export const getPaymentTypeOptions = (): PaymentType[] => ['Goods', 'Service', 'Residence', 'Crossboarder'];
 
@@ -52,7 +53,11 @@ export const getTaxProfile = (paymentType?: string | null): TaxProfile => {
 };
 
 export const getTaxBreakdown = (amount: number, paymentType?: string | null) => {
-  const profile = getTaxProfile(paymentType);
+  const baseProfile = getTaxProfile(paymentType);
+  const profile = {
+    ...baseProfile,
+    whtRate: amount >= WHT_THRESHOLD_AMOUNT ? baseProfile.whtRate : 0,
+  };
   const vatAmount = amount * profile.vatRate;
   const whtAmount = amount * profile.whtRate;
   const totalTaxAmount = vatAmount + whtAmount;
