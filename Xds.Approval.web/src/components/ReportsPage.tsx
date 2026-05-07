@@ -491,6 +491,24 @@ const ReportsPage: React.FC<ReportsPageProps> = ({ requests, isLoading, onRefres
         )}
       </div>
 
+      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 p-6">
+        <div className="flex items-center gap-3 mb-5">
+          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-600 to-green-600 flex items-center justify-center text-white">
+            <BarChart3 className="w-5 h-5" />
+          </div>
+          <div>
+            <h3 className="text-base font-semibold text-slate-900 dark:text-slate-100">VAT total by client</h3>
+            <p className="text-xs text-slate-400 dark:text-slate-500">Grouped by company or recipient name</p>
+          </div>
+        </div>
+
+        {filteredRequests.length === 0 ? (
+          <p className="text-sm text-slate-400 text-center py-6">No data for this period</p>
+        ) : (
+          <TopClientsVatTable requests={filteredRequests} colorTheme={colorTheme} />
+        )}
+      </div>
+
       {/* Charts Row 1: Volume + Pie */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2">
@@ -587,6 +605,105 @@ const TopRequestersTable: React.FC<{ requests: PaymentRequest[]; colorTheme: 'em
                     </span>
                     <span className={`text-xs font-medium ${themeClasses[colorTheme].rate}`}>{approvalPct}% approved</span>
                     <span className="text-sm font-semibold text-slate-900 dark:text-slate-100">{formatCurrency(item.total)}</span>
+                  </div>
+                </div>
+                <div className="w-full bg-slate-100 dark:bg-slate-800 rounded-full h-1.5 overflow-hidden">
+                  <div
+                    className={`h-full bg-gradient-to-r ${themeClasses[colorTheme].bar} rounded-full transition-all duration-500`}
+                    style={{ width: `${pct}%` }}
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+};
+
+const TopClientsVatTable: React.FC<{ requests: PaymentRequest[]; colorTheme: 'emerald' | 'ocean' | 'sunset' }> = ({ requests, colorTheme }) => {
+  const data = useMemo(() => {
+    const map: Record<string, { clientName: string; count: number; vatEntries: Array<{ amount: number; currency?: string | null }> }> = {};
+
+    requests.forEach((request) => {
+      const vatAmount = request.vatAmount ?? 0;
+      if (vatAmount <= 0) {
+        return;
+      }
+
+      const clientName =
+        request.companyName?.trim() ||
+        request.recipientName?.trim() ||
+        request.title?.trim() ||
+        'Unknown client';
+      const key = clientName.toLowerCase();
+
+      if (!map[key]) {
+        map[key] = {
+          clientName,
+          count: 0,
+          vatEntries: [],
+        };
+      }
+
+      map[key].count++;
+      map[key].vatEntries.push({ amount: vatAmount, currency: request.currency });
+    });
+
+    return Object.values(map)
+      .map((item) => ({
+        ...item,
+        vatTotalValue: item.vatEntries.reduce((sum, entry) => sum + entry.amount, 0),
+        vatTotalLabel: formatCurrencyTotals(item.vatEntries),
+      }))
+      .sort((left, right) => right.vatTotalValue - left.vatTotalValue)
+      .slice(0, 10);
+  }, [requests]);
+
+  const maxTotal = data.length > 0 ? data[0].vatTotalValue : 1;
+  const themeClasses: Record<string, { icon: string; rate: string; bar: string }> = {
+    emerald: {
+      icon: 'from-emerald-600 to-green-600',
+      rate: 'text-emerald-700',
+      bar: 'from-emerald-600 via-emerald-500 to-green-500',
+    },
+    ocean: {
+      icon: 'from-emerald-600 to-green-600',
+      rate: 'text-emerald-700',
+      bar: 'from-emerald-600 via-emerald-500 to-green-500',
+    },
+    sunset: {
+      icon: 'from-emerald-600 to-green-600',
+      rate: 'text-emerald-700',
+      bar: 'from-emerald-600 via-emerald-500 to-green-500',
+    },
+  };
+
+  if (data.length === 0) {
+    return <p className="text-sm text-slate-400 text-center py-6">No VAT entries available for this period</p>;
+  }
+
+  return (
+    <div className="space-y-3">
+      {data.map((item, i) => {
+        const pct = maxTotal > 0 ? (item.vatTotalValue / maxTotal) * 100 : 0;
+
+        return (
+          <div key={`${item.clientName}-${i}`} className="group">
+            <div className="flex items-center gap-4">
+              <div className={`w-8 h-8 rounded-lg bg-gradient-to-br ${themeClasses[colorTheme].icon} flex items-center justify-center flex-shrink-0`}>
+                <span className="text-white text-xs font-bold">{item.clientName.charAt(0)}</span>
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-1">
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium text-slate-900 dark:text-slate-100 truncate">{item.clientName}</p>
+                    <p className="text-xs text-slate-400 truncate">{item.count} request{item.count > 1 ? 's' : ''} with VAT</p>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-2 sm:gap-3 flex-shrink-0">
+                    <span className={`text-xs font-medium ${themeClasses[colorTheme].rate}`}>VAT total</span>
+                    <span className="text-sm font-semibold text-slate-900 dark:text-slate-100">{item.vatTotalLabel}</span>
                   </div>
                 </div>
                 <div className="w-full bg-slate-100 dark:bg-slate-800 rounded-full h-1.5 overflow-hidden">

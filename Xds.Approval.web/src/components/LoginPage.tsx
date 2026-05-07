@@ -5,9 +5,7 @@ import { Lock, User, Eye, EyeOff, ArrowRight, IdCard, Mail, BriefcaseBusiness, M
 
 const departments = [
   'CUSTOMER EXPERIENCE',
-  'LEGAL',
-  'GOVERNANCE',
-  'RISK AND COMPLIANCE',
+  'LGRC',
   'DATA SYSTEMS AND OPERATIONS',
   'HUMAN RESOURCE AND ADMINISTRATION',
   'TECHNOLOGY AND INNOVATIONS',
