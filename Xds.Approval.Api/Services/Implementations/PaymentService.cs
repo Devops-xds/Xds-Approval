@@ -41,6 +41,8 @@ public class PaymentService : IPaymentService
             Title = dto.Title,
             Description = dto.Description,
             Amount = dto.Amount,
+            VatAmount = dto.VatAmount,
+            WhtAmount = dto.WhtAmount,
             Currency = string.IsNullOrWhiteSpace(dto.Currency) ? "GHS" : dto.Currency.Trim().ToUpperInvariant(),
             Deadline = dto.Deadline,
             PaymentType = NormalizePaymentType(dto.PaymentType),
@@ -613,11 +615,10 @@ public class PaymentService : IPaymentService
                                 details.Item().Text("PAYMENT DESCRIPTION").SemiBold().FontSize(8f).FontColor(Colors.Grey.Darken2);
                                 details.Item().PaddingTop(1).Text(request.Description).FontSize(9.1f).LineHeight(1.05f);
                             });
-                            var taxProfile = GetTaxProfile(request.PaymentType);
-                            var vatAmount = Math.Round(request.Amount * taxProfile.VatRate, 2, MidpointRounding.AwayFromZero);
-                            var whtAmount = Math.Round(request.Amount * taxProfile.WhtRate, 2, MidpointRounding.AwayFromZero);
+                            var vatAmount = Math.Round(request.VatAmount ?? 0m, 2, MidpointRounding.AwayFromZero);
+                            var whtAmount = Math.Round(request.WhtAmount ?? 0m, 2, MidpointRounding.AwayFromZero);
                             var totalAmountIncludingTaxes = request.Amount + vatAmount + whtAmount;
-                            var taxRows = BuildPdfTaxRows(request.Amount, taxProfile, vatAmount);
+                            var taxRows = BuildPdfTaxRows(request.PaymentType, vatAmount, whtAmount);
 
                             table.Cell().Element(DataCellStyle).Column(tax =>
                             {
@@ -1100,6 +1101,8 @@ public class PaymentService : IPaymentService
             Title = request.Title,
             Description = request.Description,
             Amount = request.Amount,
+            VatAmount = request.VatAmount ?? 0m,
+            WhtAmount = request.WhtAmount ?? 0m,
             Currency = string.IsNullOrWhiteSpace(request.Currency) ? "GHS" : request.Currency,
             Deadline = request.Deadline,
             PaymentType = NormalizePaymentType(request.PaymentType),
@@ -1225,30 +1228,22 @@ public class PaymentService : IPaymentService
             .FirstOrDefault();
     }
 
-    private static (decimal VatRate, decimal WhtRate) GetTaxProfile(string? paymentType)
+    private static List<(string Label, decimal Amount)> BuildPdfTaxRows(string? paymentType, decimal vatAmount, decimal whtAmount)
     {
         var normalizedPaymentType = NormalizePaymentType(paymentType);
-        var whtRate = normalizedPaymentType switch
+        var whtLabel = normalizedPaymentType switch
         {
-            "Goods" => 0.03m,
-            "Service" => 0.05m,
-            "Residence" => 0.10m,
-            "Crossboarder" => 0.20m,
-            _ => 0m
+            "Goods" => "WHT Goods",
+            "Service" => "WHT Service",
+            "Residence" => "WHT Residence",
+            "Crossboarder" => "WHT Crossboarder",
+            _ => "WHT"
         };
 
-        return (0.15m, whtRate);
-    }
-
-    private static List<(string Label, decimal Amount)> BuildPdfTaxRows(decimal baseAmount, (decimal VatRate, decimal WhtRate) taxProfile, decimal vatAmount)
-    {
         var rows = new List<(string Label, decimal Amount)>
         {
-            ($"VAT {taxProfile.VatRate * 100:0}%", vatAmount),
-            ("WHT Goods 3%", taxProfile.WhtRate == 0.03m ? Math.Round(baseAmount * 0.03m, 2, MidpointRounding.AwayFromZero) : 0m),
-            ("WHT Service 5%", taxProfile.WhtRate == 0.05m ? Math.Round(baseAmount * 0.05m, 2, MidpointRounding.AwayFromZero) : 0m),
-            ("WHT Residence 10%", taxProfile.WhtRate == 0.10m ? Math.Round(baseAmount * 0.10m, 2, MidpointRounding.AwayFromZero) : 0m),
-            ("WHT Crossboarder 20%", taxProfile.WhtRate == 0.20m ? Math.Round(baseAmount * 0.20m, 2, MidpointRounding.AwayFromZero) : 0m)
+            ("VAT", vatAmount),
+            (whtLabel, whtAmount)
         };
 
         return rows;

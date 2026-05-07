@@ -47,6 +47,8 @@ public class AppDbContext : DbContext
         modelBuilder.Entity<PaymentRequest>(entity =>
         {
             entity.Property(request => request.Amount).HasPrecision(18, 2);
+            entity.Property(request => request.VatAmount).HasPrecision(18, 2);
+            entity.Property(request => request.WhtAmount).HasPrecision(18, 2);
             entity.Property(request => request.Currency).HasMaxLength(10);
             entity.Property(request => request.PaymentType).HasMaxLength(50);
         });

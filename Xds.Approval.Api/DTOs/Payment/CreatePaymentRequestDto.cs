@@ -13,6 +13,12 @@ namespace Xds.Approval.Api.DTOs.Payment
         [Range(0.01, double.MaxValue, ErrorMessage = "Amount must be greater than zero.")]
         public decimal Amount { get; set; }
 
+        [Range(0, double.MaxValue, ErrorMessage = "VAT amount cannot be negative.")]
+        public decimal VatAmount { get; set; }
+
+        [Range(0, double.MaxValue, ErrorMessage = "WHT amount cannot be negative.")]
+        public decimal WhtAmount { get; set; }
+
         [Required]
         public string Currency { get; set; } = "GHS";
 

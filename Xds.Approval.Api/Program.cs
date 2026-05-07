@@ -342,6 +342,16 @@ static async Task RepairDatabaseSchemaAsync(AppDbContext dbContext, ILogger logg
                 ALTER TABLE [PaymentRequests] ADD [PaymentType] nvarchar(50) NULL;
             END;
 
+            IF COL_LENGTH('PaymentRequests', 'VatAmount') IS NULL
+            BEGIN
+                ALTER TABLE [PaymentRequests] ADD [VatAmount] decimal(18,2) NULL;
+            END;
+
+            IF COL_LENGTH('PaymentRequests', 'WhtAmount') IS NULL
+            BEGIN
+                ALTER TABLE [PaymentRequests] ADD [WhtAmount] decimal(18,2) NULL;
+            END;
+
             EXEC(N'
                 UPDATE [PaymentRequests]
                 SET [Currency] = N''GHS''
@@ -354,6 +364,14 @@ static async Task RepairDatabaseSchemaAsync(AppDbContext dbContext, ILogger logg
                 WHERE [PaymentType] IS NULL
                    OR LTRIM(RTRIM([PaymentType])) = ''''
                    OR [PaymentType] IN (N''One month'', N''One off'', N''one-off'', N''one off'', N''Once-off'', N''once off'', N''once-off'');
+            ');
+
+            EXEC(N'
+                UPDATE [PaymentRequests]
+                SET [VatAmount] = 0,
+                    [WhtAmount] = 0
+                WHERE [VatAmount] IS NULL
+                   OR [WhtAmount] IS NULL;
             ');
         END;
 

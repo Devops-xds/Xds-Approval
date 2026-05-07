@@ -3,7 +3,7 @@ import { api, PaymentRequest, AuditLog, Attachment } from '@/lib/api';
 import { formatCurrencyAmount } from '@/lib/currency';
 import { useAuth } from '@/contexts/AuthContext';
 import { useAppContext } from '@/contexts/AppContext';
-import { getPaymentTypeLabel, getTaxBreakdown } from '@/lib/payment';
+import { getPaymentTypeLabel } from '@/lib/payment';
 import StatusBadge from './StatusBadge';
 import {
   ArrowLeft,
@@ -328,7 +328,9 @@ const PaymentRequestDetail: React.FC<PaymentRequestDetailProps> = ({ requestId, 
   const formatCurrency = (amount: number) => {
     return formatCurrencyAmount(amount, request?.currency);
   };
-  const taxBreakdown = request ? getTaxBreakdown(request.amount, request.paymentType) : null;
+  const vatAmount = request?.vatAmount ?? 0;
+  const whtAmount = request?.whtAmount ?? 0;
+  const totalTaxAmount = vatAmount + whtAmount;
 
   const formatDate = (dateStr: string) => {
     try {
@@ -513,31 +515,31 @@ const PaymentRequestDetail: React.FC<PaymentRequestDetailProps> = ({ requestId, 
               </div>
             </div>
 
-            {taxBreakdown && (
+            {(vatAmount > 0 || whtAmount > 0) && (
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
                 <div className={`${themeClasses[colorTheme].metricCard} rounded-xl border border-slate-200 p-4`}>
                   <p className="text-xs text-slate-500 font-medium uppercase tracking-wider">VAT</p>
                   <p className="text-lg font-bold text-slate-900 dark:text-slate-100 mt-1">
-                    {(taxBreakdown.vatRate * 100).toFixed(0)}% · {formatCurrency(taxBreakdown.vatAmount)}
+                    {formatCurrency(vatAmount)}
                   </p>
                 </div>
                 <div className={`${themeClasses[colorTheme].metricCard} rounded-xl border border-slate-200 p-4`}>
                   <p className="text-xs text-slate-500 font-medium uppercase tracking-wider">WHT</p>
                   <p className="text-lg font-bold text-slate-900 dark:text-slate-100 mt-1">
-                    {(taxBreakdown.whtRate * 100).toFixed(0)}% · {formatCurrency(taxBreakdown.whtAmount)}
+                    {formatCurrency(whtAmount)}
                   </p>
                 </div>
                 <div className={`${themeClasses[colorTheme].metricCard} rounded-xl border border-slate-200 p-4`}>
                   <p className="text-xs text-slate-500 font-medium uppercase tracking-wider">Total tax</p>
                   <p className="text-lg font-bold text-slate-900 dark:text-slate-100 mt-1">
-                    {formatCurrency(taxBreakdown.totalTaxAmount)}
+                    {formatCurrency(totalTaxAmount)}
                   </p>
                 </div>
               </div>
             )}
-            {taxBreakdown && (
+            {(vatAmount > 0 || whtAmount > 0) && (
               <p className="text-sm text-slate-500 dark:text-slate-400">
-                Taxes are applied only when relevant to the selected tax category.
+                Tax amounts were entered manually when this request was created.
               </p>
             )}
 

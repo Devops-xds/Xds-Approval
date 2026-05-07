@@ -1,7 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { useAppContext } from '@/contexts/AppContext';
 import { api, CreatePaymentRequest } from '@/lib/api';
-import { getCurrencySymbol, getPaymentTypeOptions, getTaxBreakdown, PaymentType } from '@/lib/payment';
+import { getCurrencySymbol, getPaymentTypeOptions, PaymentType } from '@/lib/payment';
 import {
   FileText,
   Upload,
@@ -25,6 +25,8 @@ const PaymentRequestForm: React.FC<PaymentRequestFormProps> = ({ onSuccess, onCa
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [amount, setAmount] = useState('');
+  const [vatAmount, setVatAmount] = useState('0');
+  const [whtAmount, setWhtAmount] = useState('0');
   const [currency, setCurrency] = useState('GHS');
   const [deadline, setDeadline] = useState('');
   const [paymentType, setPaymentType] = useState<PaymentType>('One-off');
@@ -36,9 +38,11 @@ const PaymentRequestForm: React.FC<PaymentRequestFormProps> = ({ onSuccess, onCa
   const currencies = ['GHS', 'USD', 'EUR', 'GBP'];
   const paymentTypes = getPaymentTypeOptions();
   const numericAmount = Number.parseFloat(amount);
-  const taxBreakdown = Number.isFinite(numericAmount) && numericAmount > 0
-    ? getTaxBreakdown(numericAmount, paymentType)
-    : null;
+  const numericVatAmount = Number.parseFloat(vatAmount);
+  const numericWhtAmount = Number.parseFloat(whtAmount);
+  const totalTaxAmount =
+    (Number.isFinite(numericVatAmount) ? numericVatAmount : 0) +
+    (Number.isFinite(numericWhtAmount) ? numericWhtAmount : 0);
 
   const getPdfFiles = (incomingFiles: File[]) => {
     const pdfFiles = incomingFiles.filter((file) =>
@@ -58,6 +62,8 @@ const PaymentRequestForm: React.FC<PaymentRequestFormProps> = ({ onSuccess, onCa
     if (!title.trim()) newErrors.title = 'Title is required';
     if (!description.trim()) newErrors.description = 'Description is required';
     if (!amount || parseFloat(amount) <= 0) newErrors.amount = 'Amount must be greater than 0';
+    if (vatAmount === '' || Number.isNaN(parseFloat(vatAmount)) || parseFloat(vatAmount) < 0) newErrors.vatAmount = 'VAT amount must be 0 or greater';
+    if (whtAmount === '' || Number.isNaN(parseFloat(whtAmount)) || parseFloat(whtAmount) < 0) newErrors.whtAmount = 'WHT amount must be 0 or greater';
     if (!deadline) newErrors.deadline = 'Deadline is required';
     if (!paymentType) newErrors.paymentType = 'Tax category is required';
     setErrors(newErrors);
@@ -74,6 +80,8 @@ const PaymentRequestForm: React.FC<PaymentRequestFormProps> = ({ onSuccess, onCa
         title: title.trim(),
         description: description.trim(),
         amount: parseFloat(amount),
+        vatAmount: parseFloat(vatAmount),
+        whtAmount: parseFloat(whtAmount),
         currency,
         deadline,
         paymentType,
@@ -309,14 +317,62 @@ const PaymentRequestForm: React.FC<PaymentRequestFormProps> = ({ onSuccess, onCa
             </div>
           </div>
 
-          {taxBreakdown && (
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-2">
+                VAT amount
+              </label>
+              <div className="relative">
+                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-lg font-semibold text-slate-400">
+                  {getCurrencySymbol(currency)}
+                </span>
+                <input
+                  type="number"
+                  value={vatAmount}
+                  onChange={(e) => { setVatAmount(e.target.value); setErrors((p) => ({ ...p, vatAmount: '' })); }}
+                  placeholder="0"
+                  min="0"
+                  step="0.01"
+                  className={`w-full pl-12 pr-4 py-3 bg-slate-50 dark:bg-slate-950 border rounded-xl text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 transition-all ${themeClasses[colorTheme].input} ${
+                    errors.vatAmount ? 'border-red-300 bg-red-50/50' : 'border-slate-200'
+                  }`}
+                />
+              </div>
+              {errors.vatAmount && <p className="text-red-500 text-sm mt-1.5">{errors.vatAmount}</p>}
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-2">
+                WHT amount
+              </label>
+              <div className="relative">
+                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-lg font-semibold text-slate-400">
+                  {getCurrencySymbol(currency)}
+                </span>
+                <input
+                  type="number"
+                  value={whtAmount}
+                  onChange={(e) => { setWhtAmount(e.target.value); setErrors((p) => ({ ...p, whtAmount: '' })); }}
+                  placeholder="0"
+                  min="0"
+                  step="0.01"
+                  className={`w-full pl-12 pr-4 py-3 bg-slate-50 dark:bg-slate-950 border rounded-xl text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 transition-all ${themeClasses[colorTheme].input} ${
+                    errors.whtAmount ? 'border-red-300 bg-red-50/50' : 'border-slate-200'
+                  }`}
+                />
+              </div>
+              {errors.whtAmount && <p className="text-red-500 text-sm mt-1.5">{errors.whtAmount}</p>}
+            </div>
+          </div>
+
+          {Number.isFinite(numericAmount) && numericAmount > 0 && (
             <div className="rounded-xl border border-emerald-100 bg-emerald-50/70 p-4">
-              <p className="text-sm font-semibold text-emerald-900">Tax preview</p>
-              <p className="mt-1 text-xs text-emerald-800">Taxes are applied only when relevant to the selected tax category.</p>
+              <p className="text-sm font-semibold text-emerald-900">Tax summary</p>
+              <p className="mt-1 text-xs text-emerald-800">These tax amounts are entered manually by the employee for this request.</p>
               <div className="mt-2 grid grid-cols-1 gap-2 text-sm text-emerald-800 sm:grid-cols-3">
-                <p>VAT ({(taxBreakdown.vatRate * 100).toFixed(0)}%): {currency} {taxBreakdown.vatAmount.toFixed(2)}</p>
-                <p>WHT ({(taxBreakdown.whtRate * 100).toFixed(0)}%): {currency} {taxBreakdown.whtAmount.toFixed(2)}</p>
-                <p>Total tax: {currency} {taxBreakdown.totalTaxAmount.toFixed(2)}</p>
+                <p>VAT: {currency} {(Number.isFinite(numericVatAmount) ? numericVatAmount : 0).toFixed(2)}</p>
+                <p>WHT: {currency} {(Number.isFinite(numericWhtAmount) ? numericWhtAmount : 0).toFixed(2)}</p>
+                <p>Total tax: {currency} {totalTaxAmount.toFixed(2)}</p>
               </div>
             </div>
           )}

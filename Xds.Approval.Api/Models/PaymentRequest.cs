@@ -8,6 +8,8 @@ namespace Xds.Approval.Api.Models
         public string Title { get; set; } = string.Empty;
         public string Description { get; set; } = string.Empty;
         public decimal Amount { get; set; }
+        public decimal? VatAmount { get; set; }
+        public decimal? WhtAmount { get; set; }
         public string? Currency { get; set; } = "GHS";
         public DateTime Deadline { get; set; }
         public string? PaymentType { get; set; } = string.Empty;

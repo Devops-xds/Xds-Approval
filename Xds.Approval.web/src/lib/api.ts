@@ -199,6 +199,8 @@ export interface PaymentRequest {
   title: string;
   description: string;
   amount: number;
+  vatAmount: number;
+  whtAmount: number;
   currency: string;
   deadline?: string;
   paymentType?: PaymentTypeValue;
@@ -231,6 +233,8 @@ export interface CreatePaymentRequest {
   title: string;
   description: string;
   amount: number;
+  vatAmount: number;
+  whtAmount: number;
   currency: string;
   deadline: string;
   paymentType: PaymentType;
