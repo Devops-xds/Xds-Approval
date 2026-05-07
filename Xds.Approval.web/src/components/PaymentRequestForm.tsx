@@ -134,6 +134,11 @@ const PaymentRequestForm: React.FC<PaymentRequestFormProps> = ({ onSuccess, onCa
     return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
   };
 
+  const formatRatePercent = (rate: number) => {
+    const percent = rate * 100;
+    return Number.isInteger(percent) ? percent.toFixed(0) : percent.toFixed(1);
+  };
+
   const themeClasses: Record<string, {
     back: string;
     title: string;
@@ -314,7 +319,7 @@ const PaymentRequestForm: React.FC<PaymentRequestFormProps> = ({ onSuccess, onCa
               <p className="text-sm font-semibold text-emerald-900">Tax preview</p>
               <p className="mt-1 text-xs text-emerald-800">Taxes are applied only when relevant to the selected tax category.</p>
               <div className="mt-2 grid grid-cols-1 gap-2 text-sm text-emerald-800 sm:grid-cols-2">
-                <p>WHT ({(taxBreakdown.whtRate * 100).toFixed(0)}%): {currency} {taxBreakdown.whtAmount.toFixed(2)}</p>
+                <p>WHT ({formatRatePercent(taxBreakdown.whtRate)}%): {currency} {taxBreakdown.whtAmount.toFixed(2)}</p>
                 <p>Total tax: {currency} {taxBreakdown.totalTaxAmount.toFixed(2)}</p>
               </div>
             </div>

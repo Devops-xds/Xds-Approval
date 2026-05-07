@@ -346,6 +346,11 @@ const PaymentRequestDetail: React.FC<PaymentRequestDetailProps> = ({ requestId, 
     }
   };
 
+  const formatRatePercent = (rate: number) => {
+    const percent = rate * 100;
+    return Number.isInteger(percent) ? percent.toFixed(0) : percent.toFixed(1);
+  };
+
   const openFinanceModal = () => {
     setShowFinanceModal(true);
     setFinanceFormError('');
@@ -518,7 +523,7 @@ const PaymentRequestDetail: React.FC<PaymentRequestDetailProps> = ({ requestId, 
                 <div className={`${themeClasses[colorTheme].metricCard} rounded-xl border border-slate-200 p-4`}>
                   <p className="text-xs text-slate-500 font-medium uppercase tracking-wider">WHT</p>
                   <p className="text-lg font-bold text-slate-900 dark:text-slate-100 mt-1">
-                    {(taxBreakdown.whtRate * 100).toFixed(0)}% · {formatCurrency(taxBreakdown.whtAmount)}
+                    {formatRatePercent(taxBreakdown.whtRate)}% · {formatCurrency(taxBreakdown.whtAmount)}
                   </p>
                 </div>
                 <div className={`${themeClasses[colorTheme].metricCard} rounded-xl border border-slate-200 p-4`}>
