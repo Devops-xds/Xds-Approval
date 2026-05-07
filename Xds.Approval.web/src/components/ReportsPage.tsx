@@ -2,6 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { useAppContext } from '@/contexts/AppContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { PaymentRequest } from '@/lib/api';
+import { getTaxBreakdown } from '@/lib/payment';
 import KpiCards, { KpiCardItem } from './reports/KpiCards';
 import VolumeChart from './reports/VolumeChart';
 import StatusPieChart from './reports/StatusPieChart';
@@ -627,7 +628,7 @@ const TopClientsVatTable: React.FC<{ requests: PaymentRequest[]; colorTheme: 'em
     const map: Record<string, { clientName: string; count: number; vatEntries: Array<{ amount: number; currency?: string | null }> }> = {};
 
     requests.forEach((request) => {
-      const vatAmount = request.vatAmount ?? 0;
+      const vatAmount = getTaxBreakdown(request.amount, request.paymentType).vatAmount;
       if (vatAmount <= 0) {
         return;
       }
