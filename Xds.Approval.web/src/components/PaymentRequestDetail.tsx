@@ -514,13 +514,7 @@ const PaymentRequestDetail: React.FC<PaymentRequestDetailProps> = ({ requestId, 
             </div>
 
             {taxBreakdown && (
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-                <div className={`${themeClasses[colorTheme].metricCard} rounded-xl border border-slate-200 p-4`}>
-                  <p className="text-xs text-slate-500 font-medium uppercase tracking-wider">VAT</p>
-                  <p className="text-lg font-bold text-slate-900 dark:text-slate-100 mt-1">
-                    {(taxBreakdown.vatRate * 100).toFixed(0)}% · {formatCurrency(taxBreakdown.vatAmount)}
-                  </p>
-                </div>
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div className={`${themeClasses[colorTheme].metricCard} rounded-xl border border-slate-200 p-4`}>
                   <p className="text-xs text-slate-500 font-medium uppercase tracking-wider">WHT</p>
                   <p className="text-lg font-bold text-slate-900 dark:text-slate-100 mt-1">

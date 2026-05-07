@@ -498,7 +498,7 @@ const ReportsPage: React.FC<ReportsPageProps> = ({ requests, isLoading, onRefres
             <BarChart3 className="w-5 h-5" />
           </div>
           <div>
-            <h3 className="text-base font-semibold text-slate-900 dark:text-slate-100">VAT total by client</h3>
+            <h3 className="text-base font-semibold text-slate-900 dark:text-slate-100">WHT total by client</h3>
             <p className="text-xs text-slate-400 dark:text-slate-500">Grouped by company or recipient name</p>
           </div>
         </div>
@@ -506,7 +506,7 @@ const ReportsPage: React.FC<ReportsPageProps> = ({ requests, isLoading, onRefres
         {filteredRequests.length === 0 ? (
           <p className="text-sm text-slate-400 text-center py-6">No data for this period</p>
         ) : (
-          <TopClientsVatTable requests={filteredRequests} colorTheme={colorTheme} />
+          <TopClientsTaxTable requests={filteredRequests} colorTheme={colorTheme} />
         )}
       </div>
 
@@ -623,13 +623,13 @@ const TopRequestersTable: React.FC<{ requests: PaymentRequest[]; colorTheme: 'em
   );
 };
 
-const TopClientsVatTable: React.FC<{ requests: PaymentRequest[]; colorTheme: 'emerald' | 'ocean' | 'sunset' }> = ({ requests, colorTheme }) => {
+const TopClientsTaxTable: React.FC<{ requests: PaymentRequest[]; colorTheme: 'emerald' | 'ocean' | 'sunset' }> = ({ requests, colorTheme }) => {
   const data = useMemo(() => {
-    const map: Record<string, { clientName: string; count: number; vatEntries: Array<{ amount: number; currency?: string | null }> }> = {};
+    const map: Record<string, { clientName: string; count: number; taxEntries: Array<{ amount: number; currency?: string | null }> }> = {};
 
     requests.forEach((request) => {
-      const vatAmount = getTaxBreakdown(request.amount, request.paymentType).vatAmount;
-      if (vatAmount <= 0) {
+      const taxAmount = getTaxBreakdown(request.amount, request.paymentType).totalTaxAmount;
+      if (taxAmount <= 0) {
         return;
       }
 
@@ -644,25 +644,25 @@ const TopClientsVatTable: React.FC<{ requests: PaymentRequest[]; colorTheme: 'em
         map[key] = {
           clientName,
           count: 0,
-          vatEntries: [],
+          taxEntries: [],
         };
       }
 
       map[key].count++;
-      map[key].vatEntries.push({ amount: vatAmount, currency: request.currency });
+      map[key].taxEntries.push({ amount: taxAmount, currency: request.currency });
     });
 
     return Object.values(map)
       .map((item) => ({
         ...item,
-        vatTotalValue: item.vatEntries.reduce((sum, entry) => sum + entry.amount, 0),
-        vatTotalLabel: formatCurrencyTotals(item.vatEntries),
+        taxTotalValue: item.taxEntries.reduce((sum, entry) => sum + entry.amount, 0),
+        taxTotalLabel: formatCurrencyTotals(item.taxEntries),
       }))
-      .sort((left, right) => right.vatTotalValue - left.vatTotalValue)
+      .sort((left, right) => right.taxTotalValue - left.taxTotalValue)
       .slice(0, 10);
   }, [requests]);
 
-  const maxTotal = data.length > 0 ? data[0].vatTotalValue : 1;
+  const maxTotal = data.length > 0 ? data[0].taxTotalValue : 1;
   const themeClasses: Record<string, { icon: string; rate: string; bar: string }> = {
     emerald: {
       icon: 'from-emerald-600 to-green-600',
@@ -682,13 +682,13 @@ const TopClientsVatTable: React.FC<{ requests: PaymentRequest[]; colorTheme: 'em
   };
 
   if (data.length === 0) {
-    return <p className="text-sm text-slate-400 text-center py-6">No VAT entries available for this period</p>;
+    return <p className="text-sm text-slate-400 text-center py-6">No WHT entries available for this period</p>;
   }
 
   return (
     <div className="space-y-3">
       {data.map((item, i) => {
-        const pct = maxTotal > 0 ? (item.vatTotalValue / maxTotal) * 100 : 0;
+        const pct = maxTotal > 0 ? (item.taxTotalValue / maxTotal) * 100 : 0;
 
         return (
           <div key={`${item.clientName}-${i}`} className="group">
@@ -700,11 +700,11 @@ const TopClientsVatTable: React.FC<{ requests: PaymentRequest[]; colorTheme: 'em
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-1">
                   <div className="min-w-0">
                     <p className="text-sm font-medium text-slate-900 dark:text-slate-100 truncate">{item.clientName}</p>
-                    <p className="text-xs text-slate-400 truncate">{item.count} request{item.count > 1 ? 's' : ''} with VAT</p>
+                    <p className="text-xs text-slate-400 truncate">{item.count} request{item.count > 1 ? 's' : ''} with WHT</p>
                   </div>
                   <div className="flex flex-wrap items-center gap-2 sm:gap-3 flex-shrink-0">
-                    <span className={`text-xs font-medium ${themeClasses[colorTheme].rate}`}>VAT total</span>
-                    <span className="text-sm font-semibold text-slate-900 dark:text-slate-100">{item.vatTotalLabel}</span>
+                    <span className={`text-xs font-medium ${themeClasses[colorTheme].rate}`}>WHT total</span>
+                    <span className="text-sm font-semibold text-slate-900 dark:text-slate-100">{item.taxTotalLabel}</span>
                   </div>
                 </div>
                 <div className="w-full bg-slate-100 dark:bg-slate-800 rounded-full h-1.5 overflow-hidden">

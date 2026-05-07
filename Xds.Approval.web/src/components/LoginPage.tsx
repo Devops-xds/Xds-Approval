@@ -105,7 +105,7 @@ const LoginPage: React.FC = () => {
               </div>
               <span className="text-xl font-bold tracking-tight text-white">XDS Approval</span>
             </div>
-            <p className="text-sm text-slate-400">Payment management system</p>
+            <p className="text-sm text-slate-400">Payment Management System</p>
           </div>
 
           <div className="space-y-8">
@@ -136,7 +136,7 @@ const LoginPage: React.FC = () => {
             </div>
           </div>
 
-          <p className="text-sm text-slate-400">Used by XDS DATA Ghana Limited</p>
+          <p className="text-sm text-slate-400">Powered by XDS DATA Ghana Limited</p>
         </div>
       </div>
 

@@ -3,11 +3,9 @@ export type PaymentTypeValue = PaymentType | 'One-off' | 'Recurring' | 'One mont
 
 export interface TaxProfile {
   label: string;
-  vatRate: number;
   whtRate: number;
 }
 
-const DEFAULT_VAT_RATE = 0.15;
 const WHT_THRESHOLD_AMOUNT = 2000;
 
 export const getPaymentTypeOptions = (): PaymentType[] => ['Goods', 'Service', 'Residence', 'Crossboarder'];
@@ -40,15 +38,15 @@ export const getTaxProfile = (paymentType?: string | null): TaxProfile => {
 
   switch (normalized) {
     case 'goods':
-      return { label: 'Goods', vatRate: DEFAULT_VAT_RATE, whtRate: 0.03 };
+      return { label: 'Goods', whtRate: 0.03 };
     case 'service':
-      return { label: 'Service', vatRate: DEFAULT_VAT_RATE, whtRate: 0.05 };
+      return { label: 'Service', whtRate: 0.05 };
     case 'residence':
-      return { label: 'Residence', vatRate: DEFAULT_VAT_RATE, whtRate: 0.1 };
+      return { label: 'Residence', whtRate: 0.1 };
     case 'crossboarder':
-      return { label: 'Crossboarder', vatRate: DEFAULT_VAT_RATE, whtRate: 0.2 };
+      return { label: 'Crossboarder', whtRate: 0.2 };
     default:
-      return { label: getPaymentTypeLabel(paymentType), vatRate: DEFAULT_VAT_RATE, whtRate: 0 };
+      return { label: getPaymentTypeLabel(paymentType), whtRate: 0 };
   }
 };
 
@@ -58,16 +56,14 @@ export const getTaxBreakdown = (amount: number, paymentType?: string | null) => 
     ...baseProfile,
     whtRate: amount >= WHT_THRESHOLD_AMOUNT ? baseProfile.whtRate : 0,
   };
-  const vatAmount = amount * profile.vatRate;
   const whtAmount = amount * profile.whtRate;
-  const totalTaxAmount = vatAmount + whtAmount;
+  const totalTaxAmount = whtAmount;
 
   return {
     ...profile,
-    vatAmount,
     whtAmount,
     totalTaxAmount,
-    totalAmountIncludingTaxes: amount + totalTaxAmount,
+    totalAmountAfterTaxes: amount - totalTaxAmount,
   };
 };
 

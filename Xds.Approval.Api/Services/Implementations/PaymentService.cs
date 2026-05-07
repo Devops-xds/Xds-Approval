@@ -615,11 +615,11 @@ public class PaymentService : IPaymentService
                                 details.Item().PaddingTop(1).Text(request.Description).FontSize(9.1f).LineHeight(1.05f);
                             });
                             var taxProfile = GetTaxProfile(request.PaymentType);
-                            var whtRate = GetApplicableWhtRate(request.Amount, taxProfile.WhtRate);
-                            var vatAmount = Math.Round(request.Amount * taxProfile.VatRate, 2, MidpointRounding.AwayFromZero);
+                            var whtRate = GetApplicableWhtRate(request.Amount, taxProfile);
                             var whtAmount = Math.Round(request.Amount * whtRate, 2, MidpointRounding.AwayFromZero);
-                            var totalAmountIncludingTaxes = request.Amount + vatAmount + whtAmount;
-                            var taxRows = BuildPdfTaxRows(request.Amount, taxProfile, vatAmount);
+                            var totalTaxAmount = whtAmount;
+                            var netAmountAfterTaxes = request.Amount - totalTaxAmount;
+                            var taxRows = BuildPdfTaxRows(request.Amount, taxProfile);
 
                             table.Cell().Element(DataCellStyle).Column(tax =>
                             {
@@ -644,9 +644,9 @@ public class PaymentService : IPaymentService
                             {
                                 totalWords.Spacing(1);
                                 totalWords.Item().Text("AMOUNT IN WORDS").SemiBold().FontSize(8f).FontColor(Colors.Grey.Darken2);
-                                totalWords.Item().Text(ToAmountInWords(totalAmountIncludingTaxes, string.IsNullOrWhiteSpace(request.Currency) ? "GHS" : request.Currency).ToUpperInvariant()).Bold().FontSize(9.2f).LineHeight(1.05f);
+                                totalWords.Item().Text(ToAmountInWords(netAmountAfterTaxes, string.IsNullOrWhiteSpace(request.Currency) ? "GHS" : request.Currency).ToUpperInvariant()).Bold().FontSize(9.2f).LineHeight(1.05f);
                             });
-                            table.Cell().Element(TotalAmountCellStyle).AlignMiddle().AlignRight().Text(FormatPdfAmount(totalAmountIncludingTaxes, request.Currency)).Bold().FontSize(10.2f);
+                            table.Cell().Element(TotalAmountCellStyle).AlignMiddle().AlignRight().Text(FormatPdfAmount(netAmountAfterTaxes, request.Currency)).Bold().FontSize(10.2f);
                         });
 
                         column.Item().PaddingTop(2).Table(infoTable =>
@@ -1227,10 +1227,10 @@ public class PaymentService : IPaymentService
             .FirstOrDefault();
     }
 
-    private static (decimal VatRate, decimal WhtRate) GetTaxProfile(string? paymentType)
+    private static decimal GetTaxProfile(string? paymentType)
     {
         var normalizedPaymentType = NormalizePaymentType(paymentType);
-        var whtRate = normalizedPaymentType switch
+        return normalizedPaymentType switch
         {
             "Goods" => 0.03m,
             "Service" => 0.05m,
@@ -1238,8 +1238,6 @@ public class PaymentService : IPaymentService
             "Crossboarder" => 0.20m,
             _ => 0m
         };
-
-        return (0.15m, whtRate);
     }
 
     private static decimal GetApplicableWhtRate(decimal amount, decimal whtRate)
@@ -1247,12 +1245,11 @@ public class PaymentService : IPaymentService
         return amount >= WhtThresholdAmount ? whtRate : 0m;
     }
 
-    private static List<(string Label, decimal Amount)> BuildPdfTaxRows(decimal baseAmount, (decimal VatRate, decimal WhtRate) taxProfile, decimal vatAmount)
+    private static List<(string Label, decimal Amount)> BuildPdfTaxRows(decimal baseAmount, decimal taxProfile)
     {
-        var applicableWhtRate = GetApplicableWhtRate(baseAmount, taxProfile.WhtRate);
+        var applicableWhtRate = GetApplicableWhtRate(baseAmount, taxProfile);
         var rows = new List<(string Label, decimal Amount)>
         {
-            ($"VAT {taxProfile.VatRate * 100:0}%", vatAmount),
             ("WHT Goods 3%", applicableWhtRate == 0.03m ? Math.Round(baseAmount * 0.03m, 2, MidpointRounding.AwayFromZero) : 0m),
             ("WHT Service 5%", applicableWhtRate == 0.05m ? Math.Round(baseAmount * 0.05m, 2, MidpointRounding.AwayFromZero) : 0m),
             ("WHT Residence 10%", applicableWhtRate == 0.10m ? Math.Round(baseAmount * 0.10m, 2, MidpointRounding.AwayFromZero) : 0m),
