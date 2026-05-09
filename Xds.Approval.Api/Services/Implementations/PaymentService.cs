@@ -531,13 +531,13 @@ public class PaymentService : IPaymentService
                         column.Item().LineHorizontal(6).LineColor(Colors.Green.Darken2);
                     });
 
-                    page.Footer().PaddingTop(2).PaddingBottom(8).Element(container =>
+                    page.Footer().PaddingTop(2).Element(container =>
                     {
                         container
                             .BorderTop(1)
                             .BorderColor(Colors.Grey.Lighten2)
                             .Background(Colors.White)
-                            .PaddingVertical(3)
+                            .PaddingVertical(4)
                             .PaddingHorizontal(8)
                             .Column(column =>
                             {
@@ -706,7 +706,7 @@ public class PaymentService : IPaymentService
                             row.ConstantItem(150).AlignRight().Text(verificationCode).SemiBold().FontSize(8.8f);
                         });
 
-                        column.Item().PaddingTop(11).PaddingBottom(14, Unit.Centimetre).Row(row =>
+                        column.Item().PaddingTop(11).Row(row =>
                         {
                             row.Spacing(6);
                             row.RelativeItem().Element(container => ComposeSignatureBlock(container, "Finance Manager", reviewedBy ?? "-", financeProcessing?.AuthorizedAt, headFinanceSignature));
