@@ -706,7 +706,7 @@ public class PaymentService : IPaymentService
                             row.ConstantItem(150).AlignRight().Text(verificationCode).SemiBold().FontSize(8.8f);
                         });
 
-                        column.Item().PaddingTop(11).Row(row =>
+                        column.Item().PaddingTop(4, Unit.Centimetre).Row(row =>
                         {
                             row.Spacing(6);
                             row.RelativeItem().Element(container => ComposeSignatureBlock(container, "Finance Manager", reviewedBy ?? "-", financeProcessing?.AuthorizedAt, headFinanceSignature));
