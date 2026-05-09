@@ -17,7 +17,6 @@ using Xds.Approval.Api.DTOs.Payment;
 
 public class PaymentService : IPaymentService
 {
-    private const decimal WhtThresholdAmount = 2000m;
     private readonly AppDbContext _context;
     private readonly IWebHostEnvironment _environment;
     private readonly IConfiguration _configuration;
@@ -615,7 +614,7 @@ public class PaymentService : IPaymentService
                                 details.Item().PaddingTop(1).Text(request.Description).FontSize(8.5f).LineHeight(1.0f);
                             });
                             var taxProfile = GetTaxProfile(request.PaymentType);
-                            var whtRate = GetApplicableWhtRate(request.Amount, taxProfile);
+                            var whtRate = GetApplicableWhtRate(taxProfile);
                             var whtAmount = Math.Round(request.Amount * whtRate, 2, MidpointRounding.AwayFromZero);
                             var totalTaxAmount = whtAmount;
                             var netAmountAfterTaxes = request.Amount - totalTaxAmount;
@@ -1097,7 +1096,7 @@ public class PaymentService : IPaymentService
             : null;
 
         var taxProfile = GetTaxProfile(request.PaymentType);
-        var whtRate = GetApplicableWhtRate(request.Amount, taxProfile);
+        var whtRate = GetApplicableWhtRate(taxProfile);
         var whtAmount = Math.Round(request.Amount * whtRate, 2, MidpointRounding.AwayFromZero);
         var totalTaxAmount = whtAmount;
         var netAmount = request.Amount - totalTaxAmount;
@@ -1254,14 +1253,14 @@ public class PaymentService : IPaymentService
         };
     }
 
-    private static decimal GetApplicableWhtRate(decimal amount, decimal whtRate)
+    private static decimal GetApplicableWhtRate(decimal whtRate)
     {
-        return amount >= WhtThresholdAmount ? whtRate : 0m;
+        return whtRate;
     }
 
     private static List<(string Label, decimal Amount)> BuildPdfTaxRows(decimal baseAmount, decimal taxProfile)
     {
-        var applicableWhtRate = GetApplicableWhtRate(baseAmount, taxProfile);
+        var applicableWhtRate = GetApplicableWhtRate(taxProfile);
         var rows = new List<(string Label, decimal Amount)>
         {
             ("Goods 3%", applicableWhtRate == 0.03m ? Math.Round(baseAmount * 0.03m, 2, MidpointRounding.AwayFromZero) : 0m),

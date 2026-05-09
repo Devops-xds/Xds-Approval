@@ -6,8 +6,6 @@ export interface TaxProfile {
   whtRate: number;
 }
 
-const WHT_THRESHOLD_AMOUNT = 2000;
-
 export const getPaymentTypeOptions = (): PaymentType[] => ['Goods', 'Service', 'Residence', 'Non-Residence', 'Crossboarder'];
 
 export const getPaymentTypeLabel = (paymentType?: string | null) => {
@@ -54,11 +52,7 @@ export const getTaxProfile = (paymentType?: string | null): TaxProfile => {
 };
 
 export const getTaxBreakdown = (amount: number, paymentType?: string | null) => {
-  const baseProfile = getTaxProfile(paymentType);
-  const profile = {
-    ...baseProfile,
-    whtRate: amount >= WHT_THRESHOLD_AMOUNT ? baseProfile.whtRate : 0,
-  };
+  const profile = getTaxProfile(paymentType);
   const whtAmount = amount * profile.whtRate;
   const totalTaxAmount = whtAmount;
 
