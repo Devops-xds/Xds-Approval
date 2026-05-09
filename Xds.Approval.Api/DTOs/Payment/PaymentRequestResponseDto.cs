@@ -6,6 +6,10 @@ namespace Xds.Approval.Api.DTOs.Payment
         public string Title { get; set; } = string.Empty;
         public string Description { get; set; } = string.Empty;
         public decimal Amount { get; set; }
+        public decimal WhtRate { get; set; }
+        public decimal WhtAmount { get; set; }
+        public decimal TotalTaxAmount { get; set; }
+        public decimal NetAmount { get; set; }
         public string Currency { get; set; } = "GHS";
         public DateTime Deadline { get; set; }
         public string PaymentType { get; set; } = string.Empty;

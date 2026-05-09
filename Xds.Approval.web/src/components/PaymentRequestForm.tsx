@@ -321,6 +321,7 @@ const PaymentRequestForm: React.FC<PaymentRequestFormProps> = ({ onSuccess, onCa
               <div className="mt-2 grid grid-cols-1 gap-2 text-sm text-emerald-800 sm:grid-cols-2">
                 <p>WHT ({formatRatePercent(taxBreakdown.whtRate)}%): {currency} {taxBreakdown.whtAmount.toFixed(2)}</p>
                 <p>Total tax: {currency} {taxBreakdown.totalTaxAmount.toFixed(2)}</p>
+                <p>Net amount: {currency} {taxBreakdown.totalAmountAfterTaxes.toFixed(2)}</p>
               </div>
             </div>
           )}

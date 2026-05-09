@@ -1096,12 +1096,22 @@ public class PaymentService : IPaymentService
             ? BuildVerificationCode(request, latestFinalApproval, latestFinanceProcessing)
             : null;
 
+        var taxProfile = GetTaxProfile(request.PaymentType);
+        var whtRate = GetApplicableWhtRate(request.Amount, taxProfile);
+        var whtAmount = Math.Round(request.Amount * whtRate, 2, MidpointRounding.AwayFromZero);
+        var totalTaxAmount = whtAmount;
+        var netAmount = request.Amount - totalTaxAmount;
+
         return new PaymentRequestResponseDto
         {
             Id = request.Id,
             Title = request.Title,
             Description = request.Description,
             Amount = request.Amount,
+            WhtRate = whtRate,
+            WhtAmount = whtAmount,
+            TotalTaxAmount = totalTaxAmount,
+            NetAmount = netAmount,
             Currency = string.IsNullOrWhiteSpace(request.Currency) ? "GHS" : request.Currency,
             Deadline = request.Deadline,
             PaymentType = NormalizePaymentType(request.PaymentType),

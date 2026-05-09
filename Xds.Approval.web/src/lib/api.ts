@@ -199,6 +199,10 @@ export interface PaymentRequest {
   title: string;
   description: string;
   amount: number;
+  whtRate?: number;
+  whtAmount?: number;
+  totalTaxAmount?: number;
+  netAmount?: number;
   currency: string;
   deadline?: string;
   paymentType?: PaymentTypeValue;

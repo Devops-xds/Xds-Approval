@@ -36,6 +36,8 @@ const PaymentRequestList: React.FC<PaymentRequestListProps> = ({
   title = 'Payment requests',
   filterStatus,
 }) => {
+  const getDisplayAmount = (request: PaymentRequest) => request.netAmount ?? request.amount;
+
   const { colorTheme } = useAppContext();
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState(filterStatus || 'all');
@@ -310,7 +312,7 @@ const PaymentRequestList: React.FC<PaymentRequestListProps> = ({
                         )}
                       </td>
                       <td className="px-5 py-4">
-                        <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">{formatCurrency(request.amount, request.currency || 'GHS')}</p>
+                        <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">{formatCurrency(getDisplayAmount(request), request.currency || 'GHS')}</p>
                       </td>
                       <td className="px-5 py-4">
                         <StatusBadge status={request.status} size="sm" />
@@ -351,7 +353,7 @@ const PaymentRequestList: React.FC<PaymentRequestListProps> = ({
                     <StatusBadge status={request.status} size="sm" />
                   </div>
                   <div className="flex items-center justify-between mt-3">
-                    <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">{formatCurrency(request.amount, request.currency || 'GHS')}</p>
+                    <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">{formatCurrency(getDisplayAmount(request), request.currency || 'GHS')}</p>
                     <p className="text-xs text-slate-400 flex items-center gap-1">
                       <Calendar className="w-3 h-3" />
                       {formatDate(request.createdAt)}

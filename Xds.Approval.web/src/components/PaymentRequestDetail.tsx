@@ -329,6 +329,10 @@ const PaymentRequestDetail: React.FC<PaymentRequestDetailProps> = ({ requestId, 
     return formatCurrencyAmount(amount, request?.currency);
   };
   const taxBreakdown = request ? getTaxBreakdown(request.amount, request.paymentType) : null;
+  const whtAmount = request?.whtAmount ?? taxBreakdown?.whtAmount ?? 0;
+  const totalTaxAmount = request?.totalTaxAmount ?? taxBreakdown?.totalTaxAmount ?? 0;
+  const netAmount = request?.netAmount ?? taxBreakdown?.totalAmountAfterTaxes ?? request?.amount ?? 0;
+  const whtRate = request?.whtRate ?? taxBreakdown?.whtRate ?? 0;
 
   const formatDate = (dateStr: string) => {
     try {
@@ -501,12 +505,12 @@ const PaymentRequestDetail: React.FC<PaymentRequestDetailProps> = ({ requestId, 
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className={`${themeClasses[colorTheme].metricCard} rounded-xl border border-slate-200 p-4`}>
-                <p className="text-xs text-slate-500 font-medium uppercase tracking-wider">Amount</p>
-                <p className="text-xl font-bold text-slate-900 dark:text-slate-100 mt-1">{formatCurrency(request.amount)}</p>
+                <p className="text-xs text-slate-500 font-medium uppercase tracking-wider">Net amount</p>
+                <p className="text-xl font-bold text-slate-900 dark:text-slate-100 mt-1">{formatCurrency(netAmount)}</p>
               </div>
               <div className={`${themeClasses[colorTheme].metricCard} rounded-xl border border-slate-200 p-4`}>
-                <p className="text-xs text-slate-500 font-medium uppercase tracking-wider">Currency</p>
-                <p className="text-xl font-bold text-slate-900 dark:text-slate-100 mt-1">{request.currency}</p>
+                <p className="text-xs text-slate-500 font-medium uppercase tracking-wider">Gross amount</p>
+                <p className="text-xl font-bold text-slate-900 dark:text-slate-100 mt-1">{formatCurrency(request.amount)}</p>
               </div>
               <div className={`${themeClasses[colorTheme].metricCard} rounded-xl border border-slate-200 p-4`}>
                 <p className="text-xs text-slate-500 font-medium uppercase tracking-wider">Deadline</p>
@@ -523,13 +527,13 @@ const PaymentRequestDetail: React.FC<PaymentRequestDetailProps> = ({ requestId, 
                 <div className={`${themeClasses[colorTheme].metricCard} rounded-xl border border-slate-200 p-4`}>
                   <p className="text-xs text-slate-500 font-medium uppercase tracking-wider">WHT</p>
                   <p className="text-lg font-bold text-slate-900 dark:text-slate-100 mt-1">
-                    {formatRatePercent(taxBreakdown.whtRate)}% · {formatCurrency(taxBreakdown.whtAmount)}
+                    {formatRatePercent(whtRate)}% · {formatCurrency(whtAmount)}
                   </p>
                 </div>
                 <div className={`${themeClasses[colorTheme].metricCard} rounded-xl border border-slate-200 p-4`}>
                   <p className="text-xs text-slate-500 font-medium uppercase tracking-wider">Total tax</p>
                   <p className="text-lg font-bold text-slate-900 dark:text-slate-100 mt-1">
-                    {formatCurrency(taxBreakdown.totalTaxAmount)}
+                    {formatCurrency(totalTaxAmount)}
                   </p>
                 </div>
               </div>

@@ -31,6 +31,7 @@ const Dashboard: React.FC<DashboardProps> = ({ requests, isLoading, onViewReques
   const { user } = useAuth();
   const { colorTheme } = useAppContext();
   const role = user?.role || 'User';
+  const getDisplayAmount = (request: PaymentRequest) => request.netAmount ?? request.amount;
   const stats = useMemo(() => {
     const nonRejectedRequests = requests.filter((r) => r.status !== 'Rejected');
     const total = requests.length;
@@ -46,11 +47,11 @@ const Dashboard: React.FC<DashboardProps> = ({ requests, isLoading, onViewReques
     const rejected = requests.filter((r) => r.status === 'Rejected').length;
     const financePrepared = requests.filter((r) => r.status === 'FinancePrepared').length;
     const financeAuthorized = requests.filter((r) => r.status === 'FinanceAuthorized').length;
-    const totalAmount = nonRejectedRequests.reduce((sum, r) => sum + r.amount, 0);
+    const totalAmount = nonRejectedRequests.reduce((sum, r) => sum + getDisplayAmount(r), 0);
     const averageAmount = nonRejectedRequests.length > 0 ? totalAmount / nonRejectedRequests.length : 0;
     const approvedAmount = requests
       .filter((r) => r.status === 'Approved' || r.status === 'CEOApproved' || r.status === 'FinanceAuthorized' || r.status === 'FinancePrepared')
-      .reduce((sum, r) => sum + r.amount, 0);
+      .reduce((sum, r) => sum + getDisplayAmount(r), 0);
     const nearestDeadlineRequest = [...requests]
       .filter((r) => r.deadline && (r.status === 'Pending' || r.status === 'CEOApproved' || r.status === 'FinancePrepared' || r.status === 'FinanceAuthorized'))
       .sort((a, b) => new Date(a.deadline!).getTime() - new Date(b.deadline!).getTime())[0];
@@ -85,7 +86,7 @@ const Dashboard: React.FC<DashboardProps> = ({ requests, isLoading, onViewReques
     () => formatCurrencyTotals(
       requests
         .filter((request) => request.status !== 'Rejected')
-        .map((request) => ({ amount: request.amount, currency: request.currency })),
+        .map((request) => ({ amount: getDisplayAmount(request), currency: request.currency })),
     ),
     [requests],
   );
@@ -438,7 +439,7 @@ const Dashboard: React.FC<DashboardProps> = ({ requests, isLoading, onViewReques
                   )}
                 </div>
                 <div className="w-full sm:w-auto sm:text-right flex-shrink-0 flex items-center justify-between sm:block">
-                  <p className="text-sm font-semibold text-slate-900">{formatCurrency(request.amount, request.currency || 'GHS')}</p>
+                  <p className="text-sm font-semibold text-slate-900">{formatCurrency(getDisplayAmount(request), request.currency || 'GHS')}</p>
                   <div className="mt-0 sm:mt-1">
                     <StatusBadge status={request.status} size="sm" />
                   </div>
