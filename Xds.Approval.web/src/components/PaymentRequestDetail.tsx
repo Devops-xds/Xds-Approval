@@ -456,7 +456,7 @@ const PaymentRequestDetail: React.FC<PaymentRequestDetailProps> = ({ requestId, 
   }
 
   const canDownloadGeneratedPv = ['FinancePrepared', 'FinanceAuthorized', 'Approved'].includes(request.status);
-  const shouldShowViewPv = role === 'HeadOfFinance' && request.status === 'FinancePrepared';
+  const shouldShowViewPv = ['FinancePrepared', 'FinanceAuthorized'].includes(request.status);
 
   return (
     <div className="space-y-6">
