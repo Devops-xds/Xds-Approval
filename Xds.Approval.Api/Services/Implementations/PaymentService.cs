@@ -531,13 +531,13 @@ public class PaymentService : IPaymentService
                         column.Item().LineHorizontal(6).LineColor(Colors.Green.Darken2);
                     });
 
-                    page.Footer().PaddingTop(2).Element(container =>
+                    page.Footer().PaddingTop(2).PaddingBottom(8).Element(container =>
                     {
                         container
                             .BorderTop(1)
                             .BorderColor(Colors.Grey.Lighten2)
                             .Background(Colors.White)
-                            .PaddingVertical(4)
+                            .PaddingVertical(3)
                             .PaddingHorizontal(8)
                             .Column(column =>
                             {
