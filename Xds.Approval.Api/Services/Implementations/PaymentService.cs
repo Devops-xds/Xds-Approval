@@ -1261,16 +1261,25 @@ public class PaymentService : IPaymentService
     private static List<(string Label, decimal Amount)> BuildPdfTaxRows(decimal baseAmount, decimal taxProfile)
     {
         var applicableWhtRate = GetApplicableWhtRate(taxProfile);
-        var rows = new List<(string Label, decimal Amount)>
+        if (applicableWhtRate <= 0m)
         {
-            ("Goods 3%", applicableWhtRate == 0.03m ? Math.Round(baseAmount * 0.03m, 2, MidpointRounding.AwayFromZero) : 0m),
-            ("Service 7.5%", applicableWhtRate == 0.075m ? Math.Round(baseAmount * 0.075m, 2, MidpointRounding.AwayFromZero) : 0m),
-            ("Residence 10%", applicableWhtRate == 0.10m ? Math.Round(baseAmount * 0.10m, 2, MidpointRounding.AwayFromZero) : 0m),
-            ("Non-Residence 15%", applicableWhtRate == 0.15m ? Math.Round(baseAmount * 0.15m, 2, MidpointRounding.AwayFromZero) : 0m),
-            ("Crossboarder 20%", applicableWhtRate == 0.20m ? Math.Round(baseAmount * 0.20m, 2, MidpointRounding.AwayFromZero) : 0m)
+            return [];
+        }
+
+        var label = applicableWhtRate switch
+        {
+            0.03m => "Goods 3%",
+            0.075m => "Service 7.5%",
+            0.10m => "Residence 10%",
+            0.15m => "Non-Residence 15%",
+            0.20m => "Crossboarder 20%",
+            _ => $"WHT {applicableWhtRate:P}"
         };
 
-        return rows;
+        return
+        [
+            (label, Math.Round(baseAmount * applicableWhtRate, 2, MidpointRounding.AwayFromZero))
+        ];
     }
 
     private static string FormatPdfAmount(decimal amount, string? currency)
