@@ -206,7 +206,7 @@ const ReportsPage: React.FC<ReportsPageProps> = ({ requests, isLoading, onRefres
         {
           label: 'Post-review signoff delay',
           value: signoffLeadTime === null ? 'N/A' : `${signoffLeadTime.toFixed(1)} d`,
-          subtitle: 'Finance Manager authorization to final CEO signature',
+          subtitle: 'Finance Manager authorization to completion',
           icon: 'trend',
           gradient: 'from-emerald-600 to-green-600',
           text: 'text-emerald-700',
@@ -257,7 +257,7 @@ const ReportsPage: React.FC<ReportsPageProps> = ({ requests, isLoading, onRefres
       {
         label: 'Average processing time',
         value: avgProcessingDays === null ? 'N/A' : `${avgProcessingDays.toFixed(1)} d`,
-        subtitle: 'created -> CEO final signature',
+        subtitle: 'created -> finance authorization',
         icon: 'time',
         gradient: 'from-slate-500 to-slate-700',
         text: 'text-slate-700',

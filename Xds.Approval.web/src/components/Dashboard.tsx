@@ -112,8 +112,12 @@ const Dashboard: React.FC<DashboardProps> = ({ requests, isLoading, onViewReques
       return `Initial CEO approval by ${request.approvedByUserName}`;
     }
 
-    if ((request.status === 'Approved' || request.status === 'Rejected') && request.approvedByUserName) {
-      return `${request.status === 'Approved' ? 'Final CEO signature' : request.status} by ${request.approvedByUserName}`;
+    if (request.status === 'Approved' && request.authorizedByUserName) {
+      return `Authorized by ${request.authorizedByUserName}`;
+    }
+
+    if (request.status === 'Rejected' && request.approvedByUserName) {
+      return `${request.status} by ${request.approvedByUserName}`;
     }
 
     return null;
@@ -155,7 +159,7 @@ const Dashboard: React.FC<DashboardProps> = ({ requests, isLoading, onViewReques
             textColor: 'text-emerald-700',
           },
           {
-            label: 'Final signed',
+            label: 'Finalized',
             value: stats.approved,
             icon: <CheckCircle2 className="w-5 h-5" />,
             color: 'from-emerald-600 to-teal-600',
@@ -305,13 +309,13 @@ const Dashboard: React.FC<DashboardProps> = ({ requests, isLoading, onViewReques
         </div>
       )}
 
-      {role === 'CEO' && (stats.pending > 0 || stats.financeAuthorized > 0) && (
+      {role === 'CEO' && stats.pending > 0 && (
         <div className={`bg-gradient-to-r ${bannerTheme.shell} rounded-2xl p-5 sm:p-6 text-white`}>
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div>
-              <h2 className="text-lg font-semibold">{stats.pending + stats.financeAuthorized} request{stats.pending + stats.financeAuthorized > 1 ? 's' : ''} awaiting CEO action</h2>
+              <h2 className="text-lg font-semibold">{stats.pending} request{stats.pending > 1 ? 's' : ''} awaiting CEO action</h2>
               <p className={`${bannerTheme.text} text-sm mt-1`}>
-                New requests and authorized PVs are waiting for your action
+                New requests are waiting for your initial approval
               </p>
             </div>
             <button
@@ -460,7 +464,6 @@ const Dashboard: React.FC<DashboardProps> = ({ requests, isLoading, onViewReques
               { step: '2', label: 'Initial approval', desc: 'CEO', icon: <CheckCircle2 className="w-5 h-5" />, color: 'bg-amber-500' },
               { step: '3', label: 'Prepare PV', desc: 'Finance', icon: <Banknote className="w-5 h-5" />, color: 'bg-cyan-500' },
               { step: '4', label: 'Authorize PV', desc: 'Finance Manager', icon: <Banknote className="w-5 h-5" />, color: 'bg-teal-500' },
-              { step: '5', label: 'Final sign', desc: 'CEO', icon: <CheckCircle2 className="w-5 h-5" />, color: 'bg-emerald-500' },
             ].map((item, i, arr) => (
               <React.Fragment key={i}>
                 <div className="flex flex-col items-center text-center min-w-[100px]">

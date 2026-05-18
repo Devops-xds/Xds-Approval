@@ -50,6 +50,18 @@ const AppLayout: React.FC = () => {
   }, [isAuthenticated, loadRequests]);
 
   useEffect(() => {
+    if (!isAuthenticated) {
+      return;
+    }
+
+    const intervalId = window.setInterval(() => {
+      loadRequests();
+    }, 30000);
+
+    return () => window.clearInterval(intervalId);
+  }, [isAuthenticated, loadRequests]);
+
+  useEffect(() => {
     if (!isAuthenticated || !user) return;
 
     const landingViewByRole: Record<string, ViewType> = {
@@ -115,10 +127,10 @@ const AppLayout: React.FC = () => {
   const role = user?.role || 'User';
 
   // Filter requests based on role-specific views
-  const pendingRequests = requests.filter((r) => r.status === 'Pending' || r.status === 'FinanceAuthorized');
+  const pendingRequests = requests.filter((r) => r.status === 'Pending');
   const financeRequests = role === 'HeadOfFinance'
     ? requests.filter((r) => r.status === 'FinancePrepared')
-    : requests.filter((r) => r.status === 'CEOApproved' || r.status === 'Approved');
+    : requests.filter((r) => r.status === 'CEOApproved' || r.status === 'FinancePrepared' || r.status === 'Approved');
 
   const renderContent = () => {
     switch (currentView) {
@@ -165,7 +177,7 @@ const AppLayout: React.FC = () => {
             requests={financeRequests}
             isLoading={isLoadingRequests}
             onViewRequest={handleViewRequest}
-            title={role === 'HeadOfFinance' ? 'PVs awaiting authorization' : 'Requests for Finance'}
+            title={role === 'HeadOfFinance' ? 'PVs awaiting authorization' : 'Finance workflow'}
             filterStatus={role === 'HeadOfFinance' ? 'FinancePrepared' : 'CEOApproved'}
           />
         );
@@ -217,7 +229,12 @@ const AppLayout: React.FC = () => {
           sidebarOpen ? 'lg:ml-64' : 'lg:ml-20'
         }`}
       >
-        <TopBar currentView={currentView} sidebarOpen={sidebarOpen} />
+        <TopBar
+          currentView={currentView}
+          sidebarOpen={sidebarOpen}
+          requests={requests}
+          onViewRequest={handleViewRequest}
+        />
 
         <main className="p-3 sm:p-5 lg:p-8">
           {renderContent()}

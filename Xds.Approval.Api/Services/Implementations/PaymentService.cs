@@ -124,7 +124,6 @@ public class PaymentService : IPaymentService
         var stage = request.Status switch
         {
             "Pending" => "Initial",
-            "FinanceAuthorized" => "Final",
             _ => string.Empty
         };
 
@@ -135,9 +134,7 @@ public class PaymentService : IPaymentService
 
         request.Status = dto.Status == "Rejected"
             ? "Rejected"
-            : stage == "Initial"
-                ? "CEOApproved"
-                : "Approved";
+            : "CEOApproved";
 
         var approval = new Approval
         {
@@ -154,9 +151,7 @@ public class PaymentService : IPaymentService
 
         await Log(approvedByUserId, dto.Status == "Rejected"
             ? "CEO Rejected"
-            : stage == "Initial"
-                ? "CEO Approved Request"
-                : "CEO Signed PV", request.Id);
+            : "CEO Approved Request", request.Id);
 
         return ServiceResult.Ok($"Payment request {dto.Status.ToLowerInvariant()} successfully.");
     }
@@ -173,9 +168,9 @@ public class PaymentService : IPaymentService
 
         if (string.Equals(userRole, "Finance", StringComparison.OrdinalIgnoreCase))
         {
-            if (request.Status != "CEOApproved" && request.Status != "FinancePrepared" && request.Status != "FinanceAuthorized")
+            if (request.Status != "CEOApproved" && request.Status != "FinancePrepared")
             {
-                return ServiceResult.Fail(ServiceResultType.Conflict, "Finance can only prepare or update PV data before the final CEO signature.");
+                return ServiceResult.Fail(ServiceResultType.Conflict, "Finance can only prepare or update PV data before final authorization.");
             }
 
             if (string.IsNullOrWhiteSpace(dto.CompanyName))
@@ -232,11 +227,6 @@ public class PaymentService : IPaymentService
             {
                 finance.Status = "Prepared";
             }
-            else
-            {
-                finance.Status = "Authorized";
-            }
-
             if (isNewFinancePreparation)
             {
                 _context.FinanceProcessings.Add(finance);
@@ -262,7 +252,7 @@ public class PaymentService : IPaymentService
             finance.AuthorizedBy = userId;
             finance.AuthorizedAt = DateTime.UtcNow;
             finance.Status = "Authorized";
-            request.Status = "FinanceAuthorized";
+            request.Status = "Approved";
 
             await _context.SaveChangesAsync();
             await Log(userId, "Finance Manager Authorized PV", request.Id);
@@ -315,7 +305,7 @@ public class PaymentService : IPaymentService
 
         if (request.Status != "Pending" && request.Status != "CEOApproved" && request.Status != "FinancePrepared")
         {
-            return ServiceResult<AttachmentResponseDto>.Fail(ServiceResultType.Conflict, "Attachments can only be added before the CEO final signature.");
+            return ServiceResult<AttachmentResponseDto>.Fail(ServiceResultType.Conflict, "Attachments can only be added before the PV is finalized.");
         }
 
         var configuredUploadFolder = _configuration["FileStorage:UploadFolder"];
@@ -459,16 +449,21 @@ public class PaymentService : IPaymentService
         }
 
         var request = accessibleRequestResult.Data!;
+        var initialApproval = await _context.Approvals
+            .Where(approval => approval.PaymentRequestId == requestId && approval.Stage == "Initial")
+            .OrderByDescending(approval => approval.ApprovedAt)
+            .FirstOrDefaultAsync();
         var finalApproval = await _context.Approvals
             .Where(approval => approval.PaymentRequestId == requestId && approval.Stage == "Final")
             .OrderByDescending(approval => approval.ApprovedAt)
             .FirstOrDefaultAsync();
+        var effectiveCeoApproval = initialApproval ?? finalApproval;
         var financeProcessing = await _context.FinanceProcessings
             .Where(finance => finance.PaymentRequestId == requestId)
             .OrderByDescending(finance => finance.PreparedAt)
             .FirstOrDefaultAsync();
 
-        var relevantUserIds = new[] { request.RequestedBy, financeProcessing?.PreparedBy, financeProcessing?.AuthorizedBy, finalApproval?.ApprovedBy }
+        var relevantUserIds = new[] { request.RequestedBy, financeProcessing?.PreparedBy, financeProcessing?.AuthorizedBy, effectiveCeoApproval?.ApprovedBy }
             .Where(id => id.HasValue)
             .Select(id => id!.Value)
             .Distinct()
@@ -486,16 +481,15 @@ public class PaymentService : IPaymentService
         var hasFinanceAuthorization = request.Status is "FinanceAuthorized" or "Approved"
             || financeProcessing?.AuthorizedAt is not null
             || financeProcessing?.AuthorizedBy is not null;
-        var hasFinalCeoSignature = request.Status == "Approved" || finalApproval is not null;
         var reviewedBy = hasFinanceAuthorization ? financeManagerName : "-";
-        var approvedBy = hasFinalCeoSignature ? headOfFinanceName : "-";
-        var ceoApprovedBy = finalApproval is null ? "-" : ToDisplayName(usersById.GetValueOrDefault(finalApproval.ApprovedBy, $"User {finalApproval.ApprovedBy}"));
+        var approvedBy = hasFinanceAuthorization ? headOfFinanceName : "-";
+        var ceoApprovedBy = effectiveCeoApproval is null ? "-" : ToDisplayName(usersById.GetValueOrDefault(effectiveCeoApproval.ApprovedBy, $"User {effectiveCeoApproval.ApprovedBy}"));
         var companyName = string.IsNullOrWhiteSpace(financeProcessing?.CompanyName) ? request.Title : financeProcessing.CompanyName;
         var recipientName = string.IsNullOrWhiteSpace(financeProcessing?.RecipientName) ? "-" : financeProcessing.RecipientName;
         var recipientAddress = string.IsNullOrWhiteSpace(financeProcessing?.RecipientAddress) ? "-" : financeProcessing.RecipientAddress;
         var recipientTelephone = string.IsNullOrWhiteSpace(financeProcessing?.RecipientTelephone) ? "-" : financeProcessing.RecipientTelephone;
         var documentNumber = BuildDocumentNumber(request);
-        var verificationCode = BuildVerificationCode(request, finalApproval, financeProcessing);
+        var verificationCode = BuildVerificationCode(request, effectiveCeoApproval, financeProcessing);
         var companyEmail = _configuration["PdfTemplate:CompanyEmail"] ?? "ask@xdsdata.com";
         var companyAddress = _configuration["PdfTemplate:CompanyAddress"] ?? "The Octagon, Accra Central, 7th Floor";
         var companyPhone = (_configuration.GetSection("PdfTemplate:FinanceContacts").Get<string[]>() ?? [])
@@ -504,7 +498,7 @@ public class PaymentService : IPaymentService
         var companyLicense = _configuration["PdfTemplate:CompanyLicense"] ?? "Credit Bureau License: 001";
         var logoBytes = LoadPdfLogo();
         var headFinanceSignature = hasFinanceAuthorization ? LoadSignatureImage("HeadOfFinance") : null;
-        var ceoSignature = hasFinalCeoSignature ? LoadSignatureImage("CEO") : null;
+        var ceoSignature = effectiveCeoApproval is not null ? LoadSignatureImage("CEO") : null;
         byte[] pdfBytes;
         try
         {
@@ -710,7 +704,7 @@ public class PaymentService : IPaymentService
                         {
                             row.Spacing(6);
                             row.RelativeItem().Element(container => ComposeSignatureBlock(container, "Finance Manager", reviewedBy ?? "-", financeProcessing?.AuthorizedAt, headFinanceSignature));
-                            row.RelativeItem().Element(container => ComposeSignatureBlock(container, "CEO", ceoApprovedBy ?? "-", finalApproval?.ApprovedAt, ceoSignature));
+                            row.RelativeItem().Element(container => ComposeSignatureBlock(container, "CEO", ceoApprovedBy ?? "-", effectiveCeoApproval?.ApprovedAt, ceoSignature));
                         });
                     });
                 });
@@ -759,7 +753,7 @@ public class PaymentService : IPaymentService
         {
             return ServiceResult<FileDownloadDto>.Fail(
                 ServiceResultType.Conflict,
-                "The final PV package is available after both the Finance Manager and the CEO have signed.");
+                "The final PV package is available after Finance Manager authorization.");
         }
 
         var regeneratedPdfResult = await GeneratePdfAsync(requestId, currentUserId, currentUserRole);
@@ -844,10 +838,16 @@ public class PaymentService : IPaymentService
 
             foreach (var candidate in processedRequests)
             {
-                latestApproval = await _context.Approvals
+                var latestInitialApproval = await _context.Approvals
+                    .Where(approval => approval.PaymentRequestId == candidate.Id && approval.Stage == "Initial")
+                    .OrderByDescending(approval => approval.ApprovedAt)
+                    .FirstOrDefaultAsync();
+
+                var latestFinalApproval = await _context.Approvals
                     .Where(approval => approval.PaymentRequestId == candidate.Id && approval.Stage == "Final")
                     .OrderByDescending(approval => approval.ApprovedAt)
                     .FirstOrDefaultAsync();
+                latestApproval = latestInitialApproval ?? latestFinalApproval;
 
                 latestFinanceProcessing = await _context.FinanceProcessings
                     .Where(finance => finance.PaymentRequestId == candidate.Id)
@@ -868,10 +868,20 @@ public class PaymentService : IPaymentService
             return ServiceResult<DocumentVerificationResponseDto>.Fail(ServiceResultType.NotFound, "No matching approved document found.");
         }
 
-        latestApproval ??= await _context.Approvals
-            .Where(approval => approval.PaymentRequestId == request.Id && approval.Stage == "Final")
-            .OrderByDescending(approval => approval.ApprovedAt)
-            .FirstOrDefaultAsync();
+        if (latestApproval is null)
+        {
+            var latestInitialApproval = await _context.Approvals
+                .Where(approval => approval.PaymentRequestId == request.Id && approval.Stage == "Initial")
+                .OrderByDescending(approval => approval.ApprovedAt)
+                .FirstOrDefaultAsync();
+
+            var latestFinalApproval = await _context.Approvals
+                .Where(approval => approval.PaymentRequestId == request.Id && approval.Stage == "Final")
+                .OrderByDescending(approval => approval.ApprovedAt)
+                .FirstOrDefaultAsync();
+
+            latestApproval = latestInitialApproval ?? latestFinalApproval;
+        }
 
         latestFinanceProcessing ??= await _context.FinanceProcessings
             .Where(finance => finance.PaymentRequestId == request.Id)
@@ -1060,11 +1070,10 @@ public class PaymentService : IPaymentService
             ? requesterInfo?.Username ?? $"User {request.RequestedBy}"
             : requesterInfo.FullName;
         var requesterDepartment = requesterInfo?.Department ?? "General";
-        var approvedByUserName = latestFinalApproval is null
-            ? latestInitialApproval is null
-                ? null
-                : usersById.GetValueOrDefault(latestInitialApproval.ApprovedBy)?.FullName ?? usersById.GetValueOrDefault(latestInitialApproval.ApprovedBy)?.Username ?? $"User {latestInitialApproval.ApprovedBy}"
-            : usersById.GetValueOrDefault(latestFinalApproval.ApprovedBy)?.FullName ?? usersById.GetValueOrDefault(latestFinalApproval.ApprovedBy)?.Username ?? $"User {latestFinalApproval.ApprovedBy}";
+        var effectiveCeoApproval = latestInitialApproval ?? latestFinalApproval;
+        var approvedByUserName = effectiveCeoApproval is null
+            ? null
+            : usersById.GetValueOrDefault(effectiveCeoApproval.ApprovedBy)?.FullName ?? usersById.GetValueOrDefault(effectiveCeoApproval.ApprovedBy)?.Username ?? $"User {effectiveCeoApproval.ApprovedBy}";
         var preparedByUserName = latestFinanceProcessing is null
             ? null
             : usersById.GetValueOrDefault(latestFinanceProcessing.PreparedBy)?.FullName ?? usersById.GetValueOrDefault(latestFinanceProcessing.PreparedBy)?.Username ?? $"User {latestFinanceProcessing.PreparedBy}";
@@ -1092,7 +1101,7 @@ public class PaymentService : IPaymentService
             : null;
 
         var verificationCode = request.Status == "Approved"
-            ? BuildVerificationCode(request, latestFinalApproval, latestFinanceProcessing)
+            ? BuildVerificationCode(request, effectiveCeoApproval, latestFinanceProcessing)
             : null;
 
         var taxProfile = GetTaxProfile(request.PaymentType);
@@ -1126,9 +1135,9 @@ public class PaymentService : IPaymentService
             CreatedAt = request.CreatedAt,
             UpdatedAt = updatedAtCandidates.Max(),
             CeoComment = latestInitialApproval?.Comment ?? latestFinalApproval?.Comment,
-            ApprovedByUserId = latestFinalApproval?.ApprovedBy ?? latestInitialApproval?.ApprovedBy,
+            ApprovedByUserId = effectiveCeoApproval?.ApprovedBy,
             ApprovedByUserName = approvedByUserName,
-            ApprovedAt = latestFinalApproval?.ApprovedAt ?? latestInitialApproval?.ApprovedAt,
+            ApprovedAt = effectiveCeoApproval?.ApprovedAt,
             PreparedByUserId = latestFinanceProcessing?.PreparedBy,
             PreparedByUserName = preparedByUserName,
             PreparedAt = latestFinanceProcessing?.PreparedAt,

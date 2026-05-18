@@ -134,8 +134,12 @@ const PaymentRequestList: React.FC<PaymentRequestListProps> = ({
       return `Initial CEO approval by ${request.approvedByUserName}`;
     }
 
-    if ((request.status === 'Approved' || request.status === 'Rejected') && request.approvedByUserName) {
-      return `${request.status === 'Approved' ? 'Final CEO signature' : request.status} by ${request.approvedByUserName}`;
+    if (request.status === 'Approved' && request.authorizedByUserName) {
+      return `Authorized by ${request.authorizedByUserName}`;
+    }
+
+    if (request.status === 'Rejected' && request.approvedByUserName) {
+      return `${request.status} by ${request.approvedByUserName}`;
     }
 
     return null;
@@ -147,7 +151,7 @@ const PaymentRequestList: React.FC<PaymentRequestListProps> = ({
     { value: 'CEOApproved', label: 'CEO Approved' },
     { value: 'FinancePrepared', label: 'Finance Prepared' },
     { value: 'FinanceAuthorized', label: 'Finance Manager Authorized' },
-    { value: 'Approved', label: 'Final CEO Signed' },
+    { value: 'Approved', label: 'Finalized' },
     { value: 'Rejected', label: 'Rejected' },
   ];
 

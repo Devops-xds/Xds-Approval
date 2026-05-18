@@ -29,7 +29,7 @@ const statusConfig: Record<string, { label: string; className: string; icon: Rea
     icon: <Banknote className="w-3.5 h-3.5" />,
   },
   Approved: {
-    label: 'CEO Final Signed',
+    label: 'Finalized',
     className: 'bg-emerald-50 text-emerald-700 border-emerald-200',
     icon: <CheckCircle2 className="w-3.5 h-3.5" />,
   },

@@ -163,8 +163,8 @@ const PaymentRequestDetail: React.FC<PaymentRequestDetailProps> = ({ requestId, 
       });
       toast.success(role === 'HeadOfFinance' ? 'PV authorized' : 'PV prepared', {
         description: role === 'HeadOfFinance'
-          ? 'The PV has been sent to the CEO for final signature.'
-          : 'The PV has been sent to the Finance Manager for authorization.',
+          ? 'The PV has been finalized successfully.'
+          : 'The PV is now available for CEO review and Finance Manager authorization.',
       });
       setShowFinanceModal(false);
       setCompanyName('');
@@ -752,7 +752,7 @@ const PaymentRequestDetail: React.FC<PaymentRequestDetailProps> = ({ requestId, 
                 <div className="flex items-center gap-3">
                   <Banknote className="w-4 h-4 text-slate-400" />
                   <div>
-                    <p className="text-xs text-slate-400">Prepared by Finance manager</p>
+                    <p className="text-xs text-slate-400">Prepared by Finance</p>
                     <p className="text-sm font-medium text-slate-700 dark:text-slate-200">
                       {request.preparedByUserName}
                       {request.preparedAt ? ` on ${formatDate(request.preparedAt)}` : ''}
@@ -776,7 +776,7 @@ const PaymentRequestDetail: React.FC<PaymentRequestDetailProps> = ({ requestId, 
                 <div className="flex items-center gap-3">
                   <CheckCircle2 className="w-4 h-4 text-slate-400" />
                   <div>
-                    <p className="text-xs text-slate-400">CEO final signed by</p>
+                    <p className="text-xs text-slate-400">Initial CEO approval by</p>
                     <p className="text-sm font-medium text-slate-700 dark:text-slate-200">
                       {request.approvedByUserName}
                       {request.approvedAt ? ` on ${formatDate(request.approvedAt)}` : ''}
@@ -795,7 +795,7 @@ const PaymentRequestDetail: React.FC<PaymentRequestDetailProps> = ({ requestId, 
           </div>
 
           {/* CEO Actions */}
-          {role === 'CEO' && (request.status === 'Pending' || request.status === 'FinanceAuthorized') && (
+          {role === 'CEO' && request.status === 'Pending' && (
             <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 p-5 space-y-3">
               <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100 uppercase tracking-wider">CEO actions</h3>
               <button
@@ -803,7 +803,7 @@ const PaymentRequestDetail: React.FC<PaymentRequestDetailProps> = ({ requestId, 
                 className={`w-full py-2.5 text-white font-semibold rounded-xl transition-colors flex items-center justify-center gap-2 ${themeClasses[colorTheme].approve}`}
               >
                 <CheckCircle2 className="w-4 h-4" />
-                {request.status === 'Pending' ? 'Approve' : 'Final sign PV'}
+                Approve
               </button>
               <button
                 onClick={() => setShowRejectModal(true)}
@@ -816,7 +816,7 @@ const PaymentRequestDetail: React.FC<PaymentRequestDetailProps> = ({ requestId, 
           )}
 
           {/* Finance Actions */}
-          {role === 'Finance' && ['CEOApproved', 'FinancePrepared', 'FinanceAuthorized'].includes(request.status) && (
+          {role === 'Finance' && ['CEOApproved', 'FinancePrepared'].includes(request.status) && (
             <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 p-5 space-y-3">
               <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100 uppercase tracking-wider">Finance actions</h3>
               <button
@@ -868,9 +868,7 @@ const PaymentRequestDetail: React.FC<PaymentRequestDetailProps> = ({ requestId, 
               <div>
                 <h3 className="text-lg font-semibold text-slate-900">Approve request</h3>
                 <p className="text-sm text-slate-500">
-                  {request.status === 'Pending'
-                    ? 'This action sends the approved request to Finance.'
-                    : 'This action adds the CEO final signature and returns the voucher to Finance for payment.'}
+                  This action sends the approved request to Finance.
                 </p>
               </div>
             </div>

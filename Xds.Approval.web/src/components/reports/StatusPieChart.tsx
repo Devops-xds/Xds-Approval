@@ -29,7 +29,7 @@ const STATUS_LABELS: Record<string, string> = {
   CEOApproved: 'CEO Approved',
   FinancePrepared: 'Finance Prepared',
   FinanceAuthorized: 'Finance Authorized',
-  Approved: 'Final Signed',
+  Approved: 'Finalized',
   Rejected: 'Rejected',
 };
 
